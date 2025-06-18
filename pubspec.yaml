@@ -55,6 +55,11 @@ dependencies:
   # AI & Machine Learning
   google_generative_ai: ^0.4.6
   
+  # Authentication
+  google_sign_in: ^6.2.1
+  sign_in_with_apple: ^6.1.1
+  crypto: ^3.0.3
+  
   # UI Components
   google_fonts: ^6.2.1
   flutter_staggered_animations: ^1.1.1
