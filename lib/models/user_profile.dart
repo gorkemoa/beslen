@@ -6,6 +6,7 @@ class UserProfile {
   final double height;
   final String goal; // "weight_loss", "maintain", "weight_gain"
   final String activityLevel; // "sedentary", "light", "moderate", "active"
+  final double dailyWaterTarget; // Günlük su hedefi (litre)
   final DateTime createdAt;
 
   UserProfile({
@@ -16,8 +17,26 @@ class UserProfile {
     required this.height,
     required this.goal,
     required this.activityLevel,
+    double? dailyWaterTarget,
     required this.createdAt,
-  });
+  }) : dailyWaterTarget = dailyWaterTarget ?? _calculateRecommendedWaterIntake(weight, activityLevel);
+
+  // Önerilen günlük su tüketimi hesaplama (litre)
+  static double _calculateRecommendedWaterIntake(double weight, String activityLevel) {
+    // Temel hesaplama: Kilo başına 35ml
+    double baseWater = (weight * 35) / 1000; // litreye çevir
+    
+    // Aktivite seviyesine göre ayarlama
+    double activityMultiplier = switch (activityLevel) {
+      'sedentary' => 1.0,
+      'light' => 1.1,
+      'moderate' => 1.2,
+      'active' => 1.3,
+      _ => 1.0,
+    };
+    
+    return (baseWater * activityMultiplier).clamp(1.5, 4.0); // 1.5-4 litre arası
+  }
 
   // BMR hesaplama (Basal Metabolic Rate - Harris-Benedict)
   double get bmr {
@@ -53,6 +72,7 @@ class UserProfile {
       'height': height,
       'goal': goal,
       'activityLevel': activityLevel,
+      'dailyWaterTarget': dailyWaterTarget,
       'createdAt': createdAt.millisecondsSinceEpoch,
     };
   }
@@ -66,6 +86,7 @@ class UserProfile {
       height: map['height']?.toDouble() ?? 0.0,
       goal: map['goal'] ?? 'maintain',
       activityLevel: map['activityLevel'] ?? 'sedentary',
+      dailyWaterTarget: map['dailyWaterTarget']?.toDouble(),
       createdAt: DateTime.fromMillisecondsSinceEpoch(map['createdAt'] ?? 0),
     );
   }

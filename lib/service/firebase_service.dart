@@ -9,6 +9,7 @@ import 'dart:convert';
 import 'dart:math';
 import '../models/food_item.dart';
 import '../models/user_profile.dart';
+import '../models/water_intake.dart';
 
 class FirebaseService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -422,6 +423,83 @@ class FirebaseService {
     } catch (e) {
       print('Bugünün yemekleri getirme hatası: $e');
       return [];
+    }
+  }
+
+  // Su tüketimi kaydetme
+  Future<bool> saveWaterIntake(WaterIntake waterIntake) async {
+    try {
+      await _firestore
+          .collection('water_intake')
+          .doc(waterIntake.id)
+          .set(waterIntake.toMap());
+      print('Su tüketimi kaydedildi: ${waterIntake.amount}ml');
+      return true;
+    } catch (e) {
+      print('Su tüketimi kaydetme hatası: $e');
+      return false;
+    }
+  }
+
+  // Bugünkü su tüketimini getirme
+  Future<List<WaterIntake>> getTodaysWaterIntake(String userId) async {
+    try {
+      DateTime today = DateTime.now();
+      DateTime startOfDay = DateTime(today.year, today.month, today.day);
+      DateTime endOfDay = startOfDay.add(Duration(days: 1));
+
+      QuerySnapshot querySnapshot = await _firestore
+          .collection('water_intake')
+          .where('userId', isEqualTo: userId)
+          .where('timestamp', isGreaterThanOrEqualTo: startOfDay.millisecondsSinceEpoch)
+          .where('timestamp', isLessThan: endOfDay.millisecondsSinceEpoch)
+          .orderBy('timestamp', descending: true)
+          .get();
+
+      return querySnapshot.docs
+          .map((doc) => WaterIntake.fromMap(doc.data() as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      print('Bugünün su tüketimi getirme hatası: $e');
+      return [];
+    }
+  }
+
+  // Su tüketimi geçmişini getirme
+  Future<List<WaterIntake>> getUserWaterHistory(String userId, {int days = 7}) async {
+    try {
+      DateTime endDate = DateTime.now();
+      DateTime startDate = endDate.subtract(Duration(days: days));
+
+      QuerySnapshot querySnapshot = await _firestore
+          .collection('water_intake')
+          .where('userId', isEqualTo: userId)
+          .where('timestamp', isGreaterThanOrEqualTo: startDate.millisecondsSinceEpoch)
+          .where('timestamp', isLessThanOrEqualTo: endDate.millisecondsSinceEpoch)
+          .orderBy('timestamp', descending: true)
+          .get();
+
+      return querySnapshot.docs
+          .map((doc) => WaterIntake.fromMap(doc.data() as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      print('Su tüketimi geçmişi getirme hatası: $e');
+      return [];
+    }
+  }
+
+  // Su tüketimi silme
+  Future<bool> deleteWaterIntake(String waterIntakeId) async {
+    try {
+      await _firestore
+          .collection('water_intake')
+          .doc(waterIntakeId)
+          .delete();
+      print('Su tüketimi silindi: $waterIntakeId');
+      return true;
+    } catch (e) {
+      print('Su tüketimi silme hatası: $e');
+      return false;
     }
   }
 

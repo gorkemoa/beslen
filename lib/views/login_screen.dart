@@ -238,19 +238,14 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         const SizedBox(height: 16),
         
-        // Apple ile giriş (iOS için)
-        if (Theme.of(context).platform == TargetPlatform.iOS)
-          Column(
-            children: [
-              _buildSocialLoginButton(
-                icon: Icons.apple,
-                text: 'Apple ile Giriş Yap',
-                color: Colors.black,
-                onPressed: _isLoading ? null : _handleAppleSignIn,
-              ),
-              const SizedBox(height: 16),
-            ],
-          ),
+        // Apple ile giriş (iOS ve Android için)
+        _buildSocialLoginButton(
+          icon: Icons.apple,
+          text: 'Apple ile Giriş Yap',
+          color: Colors.black,
+          onPressed: _isLoading ? null : _handleAppleSignIn,
+        ),
+        const SizedBox(height: 16),
         
         // E-posta ile giriş
         _buildSocialLoginButton(

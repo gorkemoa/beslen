@@ -114,6 +114,7 @@ class HistoryTab extends StatelessWidget {
     } else {
       dateTitle = dateFormatter.format(date);
     }
+  
 
     final totalCalories = foods.fold(0, (sum, food) => sum + food.calories);
 

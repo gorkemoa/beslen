@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/food_item.dart';
 import '../models/user_profile.dart';
+import '../models/water_intake.dart';
 import '../service/firebase_service.dart';
 import '../service/ai_service.dart';
 
@@ -11,6 +12,8 @@ class AppViewModel extends ChangeNotifier {
   UserProfile? _userProfile;
   List<FoodItem> _foodHistory = [];
   List<FoodItem> _todaysFoods = [];
+  List<WaterIntake> _todaysWaterIntake = [];
+  List<WaterIntake> _waterHistory = [];
   bool _isLoading = false;
   String? _error;
 
