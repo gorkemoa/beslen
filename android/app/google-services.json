@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "648396802759",
+    "project_id": "beslen-b458f",
+    "storage_bucket": "beslen-b458f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:648396802759:android:525db9364865c282a24ce2",
+        "android_client_info": {
+          "package_name": "com.example.beslen"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCavYwKTiBArhxf9MSdwZgePREWl__1Zbg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
