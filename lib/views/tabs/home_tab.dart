@@ -44,7 +44,7 @@ class HomeTab extends StatelessWidget {
                   const SizedBox(height: 16),
                   _buildDailySummary(context, appViewModel),
                   const SizedBox(height: 16),
-                  _buildWaterIntakeCard(context),
+                  _buildWaterIntakeCard(context, appViewModel),
                   const SizedBox(height: 16),
                   _buildMealsCard(context),
                   const SizedBox(height: 16),
@@ -217,10 +217,10 @@ class HomeTab extends StatelessWidget {
     );
   }
 
-  Widget _buildWaterIntakeCard(BuildContext context) {
-    const double currentWater = 1.2;
-    const double targetWater = 2.5;
-    const double progress = currentWater / targetWater;
+  Widget _buildWaterIntakeCard(BuildContext context, AppViewModel appViewModel) {
+    final currentWater = appViewModel.todaysWaterAmount;
+    final targetWater = appViewModel.waterTarget;
+    final progress = appViewModel.waterPercentage;
 
     return Card(
       elevation: 0,
@@ -235,7 +235,8 @@ class HomeTab extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text('Su Tüketimi', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                Text('$currentWater / $targetWater L', style: const TextStyle(fontSize: 14, color: Colors.grey)),
+                Text('${currentWater.toStringAsFixed(1)} / ${targetWater.toStringAsFixed(1)} L', 
+                     style: const TextStyle(fontSize: 14, color: Colors.grey)),
               ],
             ),
             const SizedBox(height: 16),
@@ -253,7 +254,9 @@ class HomeTab extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 OutlinedButton(
-                  onPressed: () {},
+                  onPressed: appViewModel.todaysWaterIntake.isNotEmpty 
+                    ? () => _removeWater(context, appViewModel)
+                    : null,
                   child: const Icon(Icons.remove),
                   style: OutlinedButton.styleFrom(
                     shape: const CircleBorder(),
@@ -267,7 +270,7 @@ class HomeTab extends StatelessWidget {
                 const Text('200 ml', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(width: 24),
                 OutlinedButton(
-                  onPressed: () {},
+                  onPressed: () => _addWater(context, appViewModel),
                   child: const Icon(Icons.add),
                   style: OutlinedButton.styleFrom(
                     shape: const CircleBorder(),
@@ -453,5 +456,59 @@ class HomeTab extends StatelessWidget {
         size: 40,
       ),
     );
+  }
+
+  // Su ekleme fonksiyonu
+  void _addWater(BuildContext context, AppViewModel appViewModel) async {
+    const double amount = 200; // 200ml varsayılan
+    
+    final success = await appViewModel.addWaterIntake(amount);
+    if (success) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${amount.toInt()}ml su eklendi'),
+            backgroundColor: const Color(0xFF4A90E2),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Su eklenirken hata oluştu'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // Su çıkarma fonksiyonu (son eklenen su kaydını sil)
+  void _removeWater(BuildContext context, AppViewModel appViewModel) async {
+    final lastWaterIntake = appViewModel.todaysWaterIntake.first;
+    
+    final success = await appViewModel.removeWaterIntake(lastWaterIntake.id);
+    if (success) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${lastWaterIntake.amount.toInt()}ml su çıkarıldı'),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Su çıkarılırken hata oluştu'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 } 
