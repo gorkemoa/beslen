@@ -21,6 +21,8 @@ class AppViewModel extends ChangeNotifier {
   UserProfile? get userProfile => _userProfile;
   List<FoodItem> get foodHistory => _foodHistory;
   List<FoodItem> get todaysFoods => _todaysFoods;
+  List<WaterIntake> get todaysWaterIntake => _todaysWaterIntake;
+  List<WaterIntake> get waterHistory => _waterHistory;
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get hasProfile => _userProfile != null;
@@ -146,6 +148,8 @@ class AppViewModel extends ChangeNotifier {
       _userProfile = null;
       _foodHistory.clear();
       _todaysFoods.clear();
+      _todaysWaterIntake.clear();
+      _waterHistory.clear();
       _error = null;
       
       print('AppViewModel: Kullanıcı verileri temizlendi');
