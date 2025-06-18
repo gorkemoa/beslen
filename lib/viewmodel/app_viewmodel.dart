@@ -185,6 +185,8 @@ class AppViewModel extends ChangeNotifier {
           print('Profil başarıyla yüklendi: ${profile.name}');
           await loadTodaysFoods();
           await loadFoodHistory();
+          await loadTodaysWaterIntake();
+          await loadWaterHistory();
         } else {
           print('Profil bulunamadı, yeni kullanıcı olabilir');
         }
