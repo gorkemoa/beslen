@@ -6,6 +6,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'firebase_options.dart';
 import 'viewmodel/app_viewmodel.dart';
 import 'views/splash_screen.dart';
+import 'views/login_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
