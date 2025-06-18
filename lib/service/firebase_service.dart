@@ -83,6 +83,149 @@ class FirebaseService {
     }
   }
 
+  // E-posta ile giriş
+  Future<UserCredential?> signInWithEmail(String email, String password) async {
+    try {
+      print('E-posta ile giriş deneniyor: $email');
+      final userCredential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      print('E-posta girişi başarılı: ${userCredential.user?.uid}');
+      return userCredential;
+    } on FirebaseAuthException catch (e) {
+      print('E-posta giriş hatası: ${e.code} - ${e.message}');
+      throw e;
+    } catch (e) {
+      print('Genel e-posta giriş hatası: $e');
+      throw e;
+    }
+  }
+
+  // E-posta ile kayıt
+  Future<UserCredential?> signUpWithEmail(String email, String password) async {
+    try {
+      print('E-posta ile kayıt deneniyor: $email');
+      final userCredential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      print('E-posta kaydı başarılı: ${userCredential.user?.uid}');
+      return userCredential;
+    } on FirebaseAuthException catch (e) {
+      print('E-posta kayıt hatası: ${e.code} - ${e.message}');
+      throw e;
+    } catch (e) {
+      print('Genel e-posta kayıt hatası: $e');
+      throw e;
+    }
+  }
+
+  // Google ile giriş
+  Future<UserCredential?> signInWithGoogle() async {
+    try {
+      print('Google ile giriş deneniyor...');
+      
+      // Google Sign-In işlemi
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        print('Google giriş iptal edildi');
+        return null;
+      }
+
+      // Google authentication
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+      // Firebase credential oluştur
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      // Firebase'e giriş yap
+      final userCredential = await _auth.signInWithCredential(credential);
+      print('Google girişi başarılı: ${userCredential.user?.uid}');
+      return userCredential;
+    } on FirebaseAuthException catch (e) {
+      print('Google Firebase Auth hatası: ${e.code} - ${e.message}');
+      throw e;
+    } catch (e) {
+      print('Genel Google giriş hatası: $e');
+      throw e;
+    }
+  }
+
+  // Apple ile giriş
+  Future<UserCredential?> signInWithApple() async {
+    try {
+      print('Apple ile giriş deneniyor...');
+      
+      // Apple Sign-In için random nonce oluştur
+      final rawNonce = _generateNonce();
+      final nonce = sha256.convert(utf8.encode(rawNonce)).toString();
+
+      // Apple Sign-In request
+      final appleCredential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+        nonce: nonce,
+      );
+
+      // Firebase credential oluştur
+      final oauthCredential = OAuthProvider("apple.com").credential(
+        idToken: appleCredential.identityToken,
+        rawNonce: rawNonce,
+      );
+
+      // Firebase'e giriş yap
+      final userCredential = await _auth.signInWithCredential(oauthCredential);
+      print('Apple girişi başarılı: ${userCredential.user?.uid}');
+      return userCredential;
+    } on FirebaseAuthException catch (e) {
+      print('Apple Firebase Auth hatası: ${e.code} - ${e.message}');
+      throw e;
+    } catch (e) {
+      print('Genel Apple giriş hatası: $e');
+      throw e;
+    }
+  }
+
+  // Şifre sıfırlama
+  Future<bool> resetPassword(String email) async {
+    try {
+      print('Şifre sıfırlama e-postası gönderiliyor: $email');
+      await _auth.sendPasswordResetEmail(email: email);
+      print('Şifre sıfırlama e-postası gönderildi');
+      return true;
+    } on FirebaseAuthException catch (e) {
+      print('Şifre sıfırlama hatası: ${e.code} - ${e.message}');
+      return false;
+    } catch (e) {
+      print('Genel şifre sıfırlama hatası: $e');
+      return false;
+    }
+  }
+
+  // Çıkış yap
+  Future<void> signOut() async {
+    try {
+      await _googleSignIn.signOut();
+      await _auth.signOut();
+      print('Çıkış yapıldı');
+    } catch (e) {
+      print('Çıkış yapma hatası: $e');
+    }
+  }
+
+  // Random nonce oluşturucu (Apple Sign-In için)
+  String _generateNonce([int length = 32]) {
+    const charset = '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+    final random = Random.secure();
+    return List.generate(length, (_) => charset[random.nextInt(charset.length)]).join();
+  }
+
   // Kullanıcı profili kaydetme
   Future<bool> saveUserProfile(UserProfile profile) async {
     try {

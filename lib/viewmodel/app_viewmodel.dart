@@ -22,7 +22,7 @@ class AppViewModel extends ChangeNotifier {
   String? get error => _error;
   bool get hasProfile => _userProfile != null;
 
-  // Kullanıcı giriş yapma
+  // Anonim giriş yapma
   Future<bool> signInAnonymously() async {
     _setLoading(true);
     try {
@@ -47,6 +47,101 @@ class AppViewModel extends ChangeNotifier {
       return false;
     } finally {
       _setLoading(false);
+    }
+  }
+
+  // E-posta ile giriş yapma
+  Future<bool> signInWithEmail(String email, String password) async {
+    _setLoading(true);
+    try {
+      final userCredential = await _firebaseService.signInWithEmail(email, password);
+      if (userCredential != null) {
+        await loadUserProfile();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      _setError('E-posta giriş hatası: $e');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // E-posta ile kayıt yapma
+  Future<bool> signUpWithEmail(String email, String password) async {
+    _setLoading(true);
+    try {
+      final userCredential = await _firebaseService.signUpWithEmail(email, password);
+      if (userCredential != null) {
+        await loadUserProfile();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      _setError('E-posta kayıt hatası: $e');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Google ile giriş yapma
+  Future<bool> signInWithGoogle() async {
+    _setLoading(true);
+    try {
+      final userCredential = await _firebaseService.signInWithGoogle();
+      if (userCredential != null) {
+        await loadUserProfile();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      _setError('Google giriş hatası: $e');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Apple ile giriş yapma
+  Future<bool> signInWithApple() async {
+    _setLoading(true);
+    try {
+      final userCredential = await _firebaseService.signInWithApple();
+      if (userCredential != null) {
+        await loadUserProfile();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      _setError('Apple giriş hatası: $e');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Şifre sıfırlama
+  Future<bool> resetPassword(String email) async {
+    try {
+      return await _firebaseService.resetPassword(email);
+    } catch (e) {
+      _setError('Şifre sıfırlama hatası: $e');
+      return false;
+    }
+  }
+
+  // Çıkış yapma
+  Future<void> signOut() async {
+    try {
+      await _firebaseService.signOut();
+      _userProfile = null;
+      _foodHistory.clear();
+      _todaysFoods.clear();
+      notifyListeners();
+    } catch (e) {
+      _setError('Çıkış yapma hatası: $e');
     }
   }
 
