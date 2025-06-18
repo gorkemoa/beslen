@@ -136,13 +136,28 @@ class AppViewModel extends ChangeNotifier {
   // Çıkış yapma
   Future<void> signOut() async {
     try {
+      print('AppViewModel: Çıkış yapılıyor...');
       await _firebaseService.signOut();
+      
+      // Kullanıcı verilerini temizle
       _userProfile = null;
       _foodHistory.clear();
       _todaysFoods.clear();
+      _error = null;
+      
+      print('AppViewModel: Kullanıcı verileri temizlendi');
       notifyListeners();
     } catch (e) {
-      _setError('Çıkış yapma hatası: $e');
+      print('AppViewModel: Çıkış yapma hatası: $e');
+      
+      // Firebase çıkışı başarısız olsa bile kullanıcı verilerini temizle
+      _userProfile = null;
+      _foodHistory.clear();
+      _todaysFoods.clear();
+      
+      // Hata mesajını set et ama throw etme, çıkış işlemi devam etsin
+      _setError('Çıkış sırasında bir hata oluştu, ancak yerel veriler temizlendi.');
+      notifyListeners();
     }
   }
 

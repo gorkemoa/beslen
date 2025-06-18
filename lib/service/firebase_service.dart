@@ -211,11 +211,21 @@ class FirebaseService {
   // Çıkış yap
   Future<void> signOut() async {
     try {
-      await _googleSignIn.signOut();
+      // Önce Google Sign-In'den çıkış yapmayı deneyelim
+      try {
+        await _googleSignIn.signOut();
+        print('Google Sign-In çıkışı başarılı');
+      } catch (e) {
+        print('Google Sign-In çıkış hatası (göz ardı edildi): $e');
+        // Google Sign-In hatası olsa bile Firebase çıkışına devam et
+      }
+      
+      // Firebase'den çıkış yap
       await _auth.signOut();
-      print('Çıkış yapıldı');
+      print('Firebase çıkışı başarılı');
     } catch (e) {
-      print('Çıkış yapma hatası: $e');
+      print('Firebase çıkış hatası: $e');
+      throw e; // Firebase çıkış hatası kritik, yukarı fırlat
     }
   }
 

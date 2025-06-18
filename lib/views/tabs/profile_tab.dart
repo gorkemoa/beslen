@@ -294,23 +294,52 @@ class ProfileTab extends StatelessWidget {
   Future<void> _signOut(BuildContext context) async {
     try {
       final appViewModel = Provider.of<AppViewModel>(context, listen: false);
+      print('ProfileTab: Çıkış işlemi başlatılıyor...');
+      
       await appViewModel.signOut();
+      print('ProfileTab: AppViewModel signOut tamamlandı');
 
       if (context.mounted) {
-        // Login sayfasına yönlendir ve tüm stack'i temizle
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-          (route) => false,
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
+        print('ProfileTab: Login sayfasına yönlendiriliyor...');
+        // Loading indicator göster
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Çıkış yapılırken hata oluştu: $e'),
-            backgroundColor: Colors.red,
+          const SnackBar(
+            content: Text('Çıkış yapılıyor...'),
+            duration: Duration(seconds: 1),
           ),
         );
+        
+        // Kısa bir süre bekle ve login sayfasına yönlendir
+        await Future.delayed(const Duration(milliseconds: 500));
+        
+        if (context.mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const LoginScreen()),
+            (route) => false,
+          );
+        }
+      }
+    } catch (e) {
+      print('ProfileTab: Çıkış yapma hatası: $e');
+      
+      if (context.mounted) {
+        // Hata olsa bile login sayfasına yönlendir
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Çıkış tamamlandı (${e.toString().contains('channel-error') ? 'bağlantı hatası göz ardı edildi' : 'hata: $e'})'),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        
+        // Yine de login sayfasına yönlendir
+        await Future.delayed(const Duration(milliseconds: 800));
+        if (context.mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const LoginScreen()),
+            (route) => false,
+          );
+        }
       }
     }
   }
