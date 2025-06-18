@@ -6,8 +6,92 @@ import 'dart:math';
 import '../../viewmodel/app_viewmodel.dart';
 import '../../models/food_item.dart';
 
-class HomeTab extends StatelessWidget {
+class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
+
+  @override
+  State<HomeTab> createState() => _HomeTabState();
+}
+
+class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
+  late AnimationController _waveController;
+  late AnimationController _buttonController;
+  late AnimationController _dropController;
+  late AnimationController _waterAmountController;
+  late Animation<double> _waveAnimation;
+  late Animation<double> _buttonScaleAnimation;
+  late Animation<double> _dropAnimation;
+  late Animation<double> _waterAmountAnimation;
+  
+  // Local state for smooth animations
+  double _localWaterAmount = 0.0;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // Dalga animasyonu (sürekli)
+    _waveController = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    )..repeat();
+    
+    _waveAnimation = Tween<double>(
+      begin: 0,
+      end: 2 * pi,
+    ).animate(_waveController);
+
+    // Buton animasyonu
+    _buttonController = AnimationController(
+      duration: const Duration(milliseconds: 150),
+      vsync: this,
+    );
+    
+    _buttonScaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.95,
+    ).animate(CurvedAnimation(
+      parent: _buttonController,
+      curve: Curves.easeInOut,
+    ));
+
+    // Su damlası animasyonu
+    _dropController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    
+    _dropAnimation = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(
+      parent: _dropController,
+      curve: Curves.elasticOut,
+    ));
+
+    // Su miktarı animasyonu
+    _waterAmountController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    
+    _waterAmountAnimation = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(
+      parent: _waterAmountController,
+      curve: Curves.easeInOut,
+    ));
+  }
+
+  @override
+  void dispose() {
+    _waveController.dispose();
+    _buttonController.dispose();
+    _dropController.dispose();
+    _waterAmountController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +128,7 @@ class HomeTab extends StatelessWidget {
                   const SizedBox(height: 16),
                   _buildDailySummary(context, appViewModel),
                   const SizedBox(height: 16),
-                  _buildWaterIntakeCard(context, appViewModel),
+                  _buildAnimatedWaterIntakeCard(context, appViewModel),
                   const SizedBox(height: 16),
                   _buildMealsCard(context),
                   const SizedBox(height: 16),
@@ -217,10 +301,15 @@ class HomeTab extends StatelessWidget {
     );
   }
 
-  Widget _buildWaterIntakeCard(BuildContext context, AppViewModel appViewModel) {
-    final currentWater = appViewModel.todaysWaterAmount;
+  Widget _buildAnimatedWaterIntakeCard(BuildContext context, AppViewModel appViewModel) {
+    // İlk yüklemede local state'i güncelle
+    if (_localWaterAmount == 0.0 && appViewModel.todaysWaterAmount > 0) {
+      _localWaterAmount = appViewModel.todaysWaterAmount;
+    }
+    
+    final currentWater = _localWaterAmount > 0 ? _localWaterAmount : appViewModel.todaysWaterAmount;
     final targetWater = appViewModel.waterTarget;
-    final progress = appViewModel.waterPercentage;
+    final progress = targetWater > 0 ? (currentWater / targetWater).clamp(0.0, 1.0) : 0.0;
 
     return Card(
       elevation: 0,
@@ -235,51 +324,177 @@ class HomeTab extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text('Su Tüketimi', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                Text('${currentWater.toStringAsFixed(1)} / ${targetWater.toStringAsFixed(1)} L', 
-                     style: const TextStyle(fontSize: 14, color: Colors.grey)),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 500),
+                  child: Text(
+                    '${currentWater.toStringAsFixed(1)} / ${targetWater.toStringAsFixed(1)} L',
+                    key: ValueKey(currentWater),
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 16),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: LinearProgressIndicator(
-                value: progress,
-                backgroundColor: Colors.grey.shade300,
-                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF4A90E2)),
-                minHeight: 10,
+            
+            // Animasyonlu dalga progress bar
+            Container(
+              height: 20,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                color: Colors.grey.shade300,
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Stack(
+                  children: [
+                    // Arka plan
+                    Container(
+                      height: 20,
+                      color: Colors.grey.shade300,
+                    ),
+                                         // Su seviyesi - Daha akıcı animasyon
+                     TweenAnimationBuilder<double>(
+                       duration: const Duration(milliseconds: 400),
+                       curve: Curves.easeInOut,
+                       tween: Tween<double>(begin: 0, end: progress),
+                       builder: (context, animatedProgress, child) {
+                         return Container(
+                           height: 20,
+                           width: (MediaQuery.of(context).size.width - 64) * animatedProgress,
+                           decoration: BoxDecoration(
+                             gradient: LinearGradient(
+                               colors: [
+                                 const Color(0xFF4A90E2).withOpacity(0.8),
+                                 const Color(0xFF4A90E2),
+                               ],
+                             ),
+                           ),
+                         );
+                       },
+                     ),
+                                         // Dalga efekti
+                     if (progress > 0)
+                       TweenAnimationBuilder<double>(
+                         duration: const Duration(milliseconds: 400),
+                         curve: Curves.easeInOut,
+                         tween: Tween<double>(begin: 0, end: progress),
+                         builder: (context, animatedProgress, child) {
+                           return AnimatedBuilder(
+                             animation: _waveAnimation,
+                             builder: (context, child) {
+                               return CustomPaint(
+                                 size: Size((MediaQuery.of(context).size.width - 64) * animatedProgress, 20),
+                                 painter: WavePainter(
+                                   waveValue: _waveAnimation.value,
+                                   progress: animatedProgress,
+                                 ),
+                               );
+                             },
+                           );
+                         },
+                       ),
+                  ],
+                ),
               ),
             ),
+            
             const SizedBox(height: 16),
+            
+            // Animasyonlu butonlar
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                OutlinedButton(
-                  onPressed: appViewModel.todaysWaterIntake.isNotEmpty 
-                    ? () => _removeWater(context, appViewModel)
-                    : null,
-                  child: const Icon(Icons.remove),
-                  style: OutlinedButton.styleFrom(
-                    shape: const CircleBorder(),
-                    padding: const EdgeInsets.all(12),
-                    side: BorderSide(color: Colors.grey.shade300),
+                ScaleTransition(
+                  scale: _buttonScaleAnimation,
+                  child: OutlinedButton(
+                    onPressed: appViewModel.todaysWaterIntake.isNotEmpty 
+                      ? () => _removeWaterAnimated(context, appViewModel)
+                      : null,
+                    child: const Icon(Icons.remove),
+                    style: OutlinedButton.styleFrom(
+                      shape: const CircleBorder(),
+                      padding: const EdgeInsets.all(12),
+                      side: BorderSide(color: Colors.grey.shade300),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 24),
-                const Icon(Icons.local_drink_outlined, color: Color(0xFF4A90E2), size: 28),
+                
+                // Animasyonlu su damlası ikonu
+                AnimatedBuilder(
+                  animation: _dropAnimation,
+                  builder: (context, child) {
+                    return Transform.scale(
+                      scale: 1.0 + (_dropAnimation.value * 0.2),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF4A90E2).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Icon(
+                          Icons.local_drink_outlined, 
+                          color: Color(0xFF4A90E2), 
+                          size: 28
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                
                 const SizedBox(width: 8),
                 const Text('200 ml', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(width: 24),
-                OutlinedButton(
-                  onPressed: () => _addWater(context, appViewModel),
-                  child: const Icon(Icons.add),
-                  style: OutlinedButton.styleFrom(
-                    shape: const CircleBorder(),
-                    padding: const EdgeInsets.all(12),
-                    side: BorderSide(color: Colors.grey.shade300),
+                
+                ScaleTransition(
+                  scale: _buttonScaleAnimation,
+                  child: OutlinedButton(
+                    onPressed: () => _addWaterAnimated(context, appViewModel),
+                    child: const Icon(Icons.add),
+                    style: OutlinedButton.styleFrom(
+                      shape: const CircleBorder(),
+                      padding: const EdgeInsets.all(12),
+                      side: BorderSide(color: Colors.grey.shade300),
+                      backgroundColor: const Color(0xFF4A90E2).withOpacity(0.1),
+                    ),
                   ),
                 ),
               ],
-            )
+            ),
+            
+            // Su damlası animasyon efekti
+            const SizedBox(height: 20),
+            Center(
+              child: AnimatedBuilder(
+                animation: _dropAnimation,
+                builder: (context, child) {
+                  if (_dropAnimation.value == 0) return const SizedBox.shrink();
+                  
+                  return Transform.translate(
+                    offset: Offset(0, -_dropAnimation.value * 30),
+                    child: Opacity(
+                      opacity: (1.0 - _dropAnimation.value).clamp(0.0, 1.0),
+                      child: Transform.scale(
+                        scale: _dropAnimation.value.clamp(0.1, 1.0),
+                        child: Container(
+                          width: 20,
+                          height: 20,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF4A90E2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.water_drop,
+                            color: Colors.white,
+                            size: 12,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
           ],
         ),
       ),
@@ -458,8 +673,18 @@ class HomeTab extends StatelessWidget {
     );
   }
 
-  // Su ekleme fonksiyonu
-  void _addWater(BuildContext context, AppViewModel appViewModel) async {
+  // Animasyonlu su ekleme fonksiyonu
+  void _addWaterAnimated(BuildContext context, AppViewModel appViewModel) async {
+    // Buton animasyonu
+    _buttonController.forward().then((_) {
+      _buttonController.reverse();
+    });
+    
+    // Su damlası animasyonu
+    _dropController.forward().then((_) {
+      _dropController.reset();
+    });
+    
     const double amount = 200; // 200ml varsayılan
     
     final success = await appViewModel.addWaterIntake(amount);
@@ -467,9 +692,17 @@ class HomeTab extends StatelessWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${amount.toInt()}ml su eklendi'),
+            content: Row(
+              children: [
+                const Icon(Icons.water_drop, color: Colors.white),
+                const SizedBox(width: 8),
+                Text('${amount.toInt()}ml su eklendi'),
+              ],
+            ),
             backgroundColor: const Color(0xFF4A90E2),
             duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
       }
@@ -485,8 +718,13 @@ class HomeTab extends StatelessWidget {
     }
   }
 
-  // Su çıkarma fonksiyonu (son eklenen su kaydını sil)
-  void _removeWater(BuildContext context, AppViewModel appViewModel) async {
+  // Animasyonlu su çıkarma fonksiyonu
+  void _removeWaterAnimated(BuildContext context, AppViewModel appViewModel) async {
+    // Buton animasyonu
+    _buttonController.forward().then((_) {
+      _buttonController.reverse();
+    });
+    
     final lastWaterIntake = appViewModel.todaysWaterIntake.first;
     
     final success = await appViewModel.removeWaterIntake(lastWaterIntake.id);
@@ -494,9 +732,17 @@ class HomeTab extends StatelessWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${lastWaterIntake.amount.toInt()}ml su çıkarıldı'),
+            content: Row(
+              children: [
+                const Icon(Icons.remove_circle_outline, color: Colors.white),
+                const SizedBox(width: 8),
+                Text('${lastWaterIntake.amount.toInt()}ml su çıkarıldı'),
+              ],
+            ),
             backgroundColor: Colors.orange,
             duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         );
       }
@@ -510,5 +756,43 @@ class HomeTab extends StatelessWidget {
         );
       }
     }
+  }
+}
+
+// Dalga animasyonu için custom painter
+class WavePainter extends CustomPainter {
+  final double waveValue;
+  final double progress;
+
+  WavePainter({required this.waveValue, required this.progress});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.3)
+      ..style = PaintingStyle.fill;
+
+    final path = Path();
+    final waveHeight = 4.0;
+    final waveLength = size.width / 2;
+
+    path.moveTo(0, size.height / 2);
+
+    for (double x = 0; x <= size.width; x++) {
+      final y = size.height / 2 + 
+          sin((x / waveLength * 2 * pi) + waveValue) * waveHeight;
+      path.lineTo(x, y);
+    }
+
+    path.lineTo(size.width, size.height);
+    path.lineTo(0, size.height);
+    path.close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(WavePainter oldDelegate) {
+    return oldDelegate.waveValue != waveValue || oldDelegate.progress != progress;
   }
 } 
