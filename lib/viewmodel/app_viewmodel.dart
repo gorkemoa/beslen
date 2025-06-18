@@ -161,6 +161,8 @@ class AppViewModel extends ChangeNotifier {
       _userProfile = null;
       _foodHistory.clear();
       _todaysFoods.clear();
+      _todaysWaterIntake.clear();
+      _waterHistory.clear();
       
       // Hata mesajını set et ama throw etme, çıkış işlemi devam etsin
       _setError('Çıkış sırasında bir hata oluştu, ancak yerel veriler temizlendi.');
