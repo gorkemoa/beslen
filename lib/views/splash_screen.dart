@@ -27,37 +27,35 @@ class _SplashScreenState extends State<SplashScreen> {
     await Future.delayed(const Duration(seconds: 2));
     
     try {
-      // Anonim giriş yap
-      final success = await appViewModel.signInAnonymously();
-      
-      if (success && mounted) {
-        // Kullanıcı profili var mı kontrol et
-        if (appViewModel.hasProfile) {
+      // Mevcut kullanıcıyı kontrol et
+      if (appViewModel.firebaseService.currentUser != null) {
+        // Kullanıcı zaten giriş yapmış, profil yükle
+        await appViewModel.loadUserProfile();
+        
+        if (mounted) {
+          if (appViewModel.hasProfile) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (context) => const HomeScreen()),
+            );
+          } else {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (context) => const ProfileSetupScreen()),
+            );
+          }
+        }
+      } else {
+        // Kullanıcı giriş yapmamış, login sayfasına yönlendir
+        if (mounted) {
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const HomeScreen()),
-          );
-        } else {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const ProfileSetupScreen()),
+            MaterialPageRoute(builder: (context) => const LoginScreen()),
           );
         }
-      } else if (mounted) {
-        // Hata durumunda geçici olarak profile setup'a yönlendir
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Firebase bağlantı sorunu. Geçici profil ile devam ediliyor.'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const ProfileSetupScreen()),
-        );
       }
     } catch (e) {
       print('Initialization error: $e');
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const ProfileSetupScreen()),
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
         );
       }
     }

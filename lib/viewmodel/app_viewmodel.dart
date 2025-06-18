@@ -21,6 +21,7 @@ class AppViewModel extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get hasProfile => _userProfile != null;
+  FirebaseService get firebaseService => _firebaseService;
 
   // Anonim giriş yapma
   Future<bool> signInAnonymously() async {
