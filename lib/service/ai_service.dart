@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import '../models/food_item.dart';
 

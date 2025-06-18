@@ -57,9 +57,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
           age: int.parse(_ageController.text),
           weight: double.parse(_weightController.text),
           height: double.parse(_heightController.text),
+          gender: 'other', // Varsayılan değer, daha sonra cinsiyet seçimi eklenebilir
           goal: _selectedGoal,
           activityLevel: _selectedActivity,
-          createdAt: DateTime.now(),
+          dailyWaterTarget: (double.parse(_weightController.text) * 35 / 1000).clamp(1.5, 4.0),
         );
 
         final success = await appViewModel.saveUserProfile(profile);

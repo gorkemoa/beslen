@@ -226,11 +226,11 @@ class AppViewModel extends ChangeNotifier {
     }
   }
 
-  // Yemek geçmişini yükleme
+  // Yemek geçmişini yükleme (arşivli veriler dahil)
   Future<void> loadFoodHistory() async {
     final user = _firebaseService.currentUser;
     if (user != null) {
-      _foodHistory = await _firebaseService.getUserFoodHistory(user.uid);
+      _foodHistory = await _firebaseService.getArchivedFoodHistory(user.uid);
       notifyListeners();
     }
   }
@@ -401,6 +401,82 @@ class AppViewModel extends ChangeNotifier {
   double get waterTarget {
     return _userProfile?.dailyWaterTarget ?? 2.5;
   }
+
+  // Uyku/Uyanma fonksiyonları
+
+  // Kullanıcının uyku durumu
+  bool get isSleeping {
+    return _userProfile?.lastSleepTime != null;
+  }
+
+  // Uyudum - günlük verileri arşivle ve sıfırla
+  Future<bool> goToSleep() async {
+    final user = _firebaseService.currentUser;
+    if (user == null) return false;
+
+    _setLoading(true);
+    try {
+      // Firebase'de uyku zamanını kaydet ve verileri arşivle
+      final success = await _firebaseService.setSleepTime(user.uid);
+      
+      if (success) {
+        // Günlük verileri sıfırla
+        await _firebaseService.resetDailyData(user.uid);
+        
+        // Local state'i temizle
+        _todaysFoods.clear();
+        _todaysWaterIntake.clear();
+        
+        // Profili yeniden yükle (uyku zamanı güncellensin)
+        await loadUserProfile();
+        
+        // Geçmişi güncelle (arşivlenmiş veriler dahil)
+        await loadFoodHistory();
+        await loadWaterHistory();
+        
+        notifyListeners();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      _setError('Uyku modu ayarlanırken hata oluştu: $e');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Uyandım - yeni güne başla
+  Future<bool> wakeUp() async {
+    final user = _firebaseService.currentUser;
+    if (user == null) return false;
+
+    _setLoading(true);
+    try {
+      // Firebase'de uyanma zamanını kaydet
+      final success = await _firebaseService.setWakeUpTime(user.uid);
+      
+      if (success) {
+        // Profili yeniden yükle (uyku zamanı temizlensin)
+        await loadUserProfile();
+        
+        // Bugünün verilerini yükle (temiz başlangıç)
+        await loadTodaysFoods();
+        await loadTodaysWaterIntake();
+        
+        notifyListeners();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      _setError('Uyanma modu ayarlanırken hata oluştu: $e');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+
 
   void _setLoading(bool loading) {
     _isLoading = loading;

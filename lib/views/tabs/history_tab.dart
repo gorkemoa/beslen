@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
-import 'dart:typed_data';
 import '../../viewmodel/app_viewmodel.dart';
 import '../../models/food_item.dart';
+import '../../models/user_profile.dart';
 
 class HistoryTab extends StatelessWidget {
   const HistoryTab({super.key});
@@ -25,7 +25,12 @@ class HistoryTab extends StatelessWidget {
           onRefresh: () async {
             await appViewModel.loadFoodHistory();
           },
-          child: _buildFoodList(context, appViewModel.foodHistory),
+          child: Column(
+            children: [
+              _buildSleepSummary(context, appViewModel),
+              Expanded(child: _buildFoodList(context, appViewModel.foodHistory)),
+            ],
+          ),
         );
       },
     );
@@ -347,5 +352,175 @@ class HistoryTab extends StatelessWidget {
     return date.year == yesterday.year &&
            date.month == yesterday.month &&
            date.day == yesterday.day;
+  }
+
+  Widget _buildSleepSummary(BuildContext context, AppViewModel appViewModel) {
+    final profile = appViewModel.userProfile;
+    if (profile == null) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.purple.shade400,
+            Colors.purple.shade600,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.purple.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+                             Icon(
+                 appViewModel.isSleeping ? Icons.bedtime : Icons.wb_sunny,
+                 color: Colors.white,
+                 size: 24,
+               ),
+              const SizedBox(width: 8),
+              Text(
+                'Uyku Durumu',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          
+                     if (appViewModel.isSleeping) 
+             _buildSleepingInfo(profile)
+           else 
+             _buildAwakeInfo(profile),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSleepingInfo(UserProfile profile) {
+    final sleepTime = profile.lastSleepTime!;
+    final now = DateTime.now();
+    final duration = now.difference(sleepTime);
+    final hours = duration.inHours;
+    final minutes = duration.inMinutes % 60;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Şu anda uyuyor 😴',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Uyku başlangıcı: ${DateFormat('HH:mm').format(sleepTime)}',
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.9),
+            fontSize: 14,
+          ),
+        ),
+        Text(
+          'Uyku süresi: ${hours}s ${minutes}dk',
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.9),
+            fontSize: 14,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAwakeInfo(UserProfile profile) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Uyanık 🌅',
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 8),
+        
+        if (profile.lastWakeUpTime != null) ...[
+          Text(
+            'Son uyanma: ${DateFormat('HH:mm').format(profile.lastWakeUpTime!)}',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.9),
+              fontSize: 14,
+            ),
+          ),
+        ],
+        
+        if (profile.lastSleepDuration != null) ...[
+          Text(
+            'Son uyku süresi: ${profile.lastSleepDuration!.toStringAsFixed(1)} saat',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.9),
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 4),
+          _buildSleepQualityIndicator(profile.lastSleepDuration!),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSleepQualityIndicator(double hours) {
+    String quality;
+    Color color;
+    IconData icon;
+
+    if (hours < 6) {
+      quality = 'Az uyku';
+      color = Colors.red.shade300;
+      icon = Icons.sentiment_dissatisfied;
+    } else if (hours < 7) {
+      quality = 'Yetersiz';
+      color = Colors.orange.shade300;
+      icon = Icons.sentiment_neutral;
+    } else if (hours <= 9) {
+      quality = 'İdeal uyku';
+      color = Colors.green.shade300;
+      icon = Icons.sentiment_satisfied;
+    } else {
+      quality = 'Fazla uyku';
+      color = Colors.blue.shade300;
+      icon = Icons.sentiment_very_satisfied;
+    }
+
+    return Row(
+      children: [
+        Icon(icon, color: color, size: 16),
+        const SizedBox(width: 4),
+        Text(
+          quality,
+          style: TextStyle(
+            color: color,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
   }
 } 

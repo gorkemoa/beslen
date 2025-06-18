@@ -242,7 +242,7 @@ class FirebaseService {
     try {
       print('Profil kaydediliyor: ${profile.id}');
       await _firestore
-          .collection('profiles')
+          .collection('users')
           .doc(profile.id)
           .set(profile.toMap());
       print('Profil başarıyla kaydedildi: ${profile.id}');
@@ -267,13 +267,13 @@ class FirebaseService {
     try {
       print('Profil getiriliyor: $userId');
       DocumentSnapshot doc = await _firestore
-          .collection('profiles')
+          .collection('users')
           .doc(userId)
           .get();
       
       if (doc.exists) {
         print('✅ Profil bulundu: ${doc.data()}');
-        return UserProfile.fromMap(doc.data() as Map<String, dynamic>);
+        return UserProfile.fromMap(doc.data() as Map<String, dynamic>, userId);
       } else {
         print('ℹ️ Profil bulunamadı: $userId (Yeni kullanıcı olabilir)');
         return null;
@@ -500,6 +500,198 @@ class FirebaseService {
     } catch (e) {
       print('Su tüketimi silme hatası: $e');
       return false;
+    }
+  }
+
+  // Uyku zamanını kaydetme ve günlük verileri arşivleme
+  Future<bool> setSleepTime(String userId) async {
+    try {
+      final now = DateTime.now();
+      
+      // Kullanıcı profilini güncelle
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .update({
+        'lastSleepTime': Timestamp.fromDate(now),
+        'lastResetDate': Timestamp.fromDate(now),
+      });
+
+      // Bugünkü verileri arşive taşı
+      await _archiveTodaysData(userId, now);
+      
+      print('Uyku zamanı kaydedildi ve veriler arşivlendi');
+      return true;
+    } catch (e) {
+      print('Uyku zamanı kaydetme hatası: $e');
+      return false;
+    }
+  }
+
+  // Uyanma zamanını kaydetme
+  Future<bool> setWakeUpTime(String userId) async {
+    try {
+      final now = DateTime.now();
+      
+      // Önce mevcut uyku zamanını al
+      final userDoc = await _firestore.collection('users').doc(userId).get();
+      double? sleepDuration;
+      
+      if (userDoc.exists) {
+        final data = userDoc.data() as Map<String, dynamic>;
+        final lastSleepTime = data['lastSleepTime'];
+        
+        if (lastSleepTime != null) {
+          final sleepTime = (lastSleepTime as Timestamp).toDate();
+          final duration = now.difference(sleepTime);
+          sleepDuration = duration.inMinutes / 60.0; // Saat cinsinden
+          print('Uyku süresi hesaplandı: ${sleepDuration.toStringAsFixed(1)} saat');
+        }
+      }
+      
+      // Kullanıcı profilini güncelle
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .update({
+        'lastSleepTime': null,
+        'lastWakeUpTime': Timestamp.fromDate(now),
+        'lastSleepDuration': sleepDuration,
+      });
+      
+      print('Uyanma zamanı kaydedildi');
+      return true;
+    } catch (e) {
+      print('Uyanma zamanı kaydetme hatası: $e');
+      return false;
+    }
+  }
+
+  // Bugünkü verileri arşive taşıma
+  Future<void> _archiveTodaysData(String userId, DateTime sleepTime) async {
+    try {
+      final today = DateTime.now();
+      final startOfDay = DateTime(today.year, today.month, today.day);
+      final endOfDay = startOfDay.add(Duration(days: 1));
+
+      // Bugünkü yemekleri arşiv koleksiyonuna kopyala
+      final foodQuery = await _firestore
+          .collection('food_items')
+          .where('userId', isEqualTo: userId)
+          .where('scannedAt', isGreaterThanOrEqualTo: startOfDay.millisecondsSinceEpoch)
+          .where('scannedAt', isLessThan: endOfDay.millisecondsSinceEpoch)
+          .get();
+
+      for (final doc in foodQuery.docs) {
+        final data = doc.data();
+        data['archivedAt'] = Timestamp.fromDate(sleepTime);
+        data['originalDate'] = Timestamp.fromDate(startOfDay);
+        
+        await _firestore
+            .collection('food_archive')
+            .doc(doc.id)
+            .set(data);
+      }
+
+      // Bugünkü su tüketimini arşiv koleksiyonuna kopyala
+      final waterQuery = await _firestore
+          .collection('water_intake')
+          .where('userId', isEqualTo: userId)
+          .where('timestamp', isGreaterThanOrEqualTo: startOfDay.millisecondsSinceEpoch)
+          .where('timestamp', isLessThan: endOfDay.millisecondsSinceEpoch)
+          .get();
+
+      for (final doc in waterQuery.docs) {
+        final data = doc.data();
+        data['archivedAt'] = Timestamp.fromDate(sleepTime);
+        data['originalDate'] = Timestamp.fromDate(startOfDay);
+        
+        await _firestore
+            .collection('water_archive')
+            .doc(doc.id)
+            .set(data);
+      }
+
+      print('Bugünkü veriler arşivlendi: ${foodQuery.docs.length} yemek, ${waterQuery.docs.length} su kaydı');
+    } catch (e) {
+      print('Veri arşivleme hatası: $e');
+    }
+  }
+
+  // Günlük verileri sıfırlama (uyku sonrası)
+  Future<bool> resetDailyData(String userId) async {
+    try {
+      final today = DateTime.now();
+      final startOfDay = DateTime(today.year, today.month, today.day);
+      final endOfDay = startOfDay.add(Duration(days: 1));
+
+      // Bugünkü yemekleri sil
+      final foodQuery = await _firestore
+          .collection('food_items')
+          .where('userId', isEqualTo: userId)
+          .where('scannedAt', isGreaterThanOrEqualTo: startOfDay.millisecondsSinceEpoch)
+          .where('scannedAt', isLessThan: endOfDay.millisecondsSinceEpoch)
+          .get();
+
+      for (final doc in foodQuery.docs) {
+        await doc.reference.delete();
+      }
+
+      // Bugünkü su tüketimini sil
+      final waterQuery = await _firestore
+          .collection('water_intake')
+          .where('userId', isEqualTo: userId)
+          .where('timestamp', isGreaterThanOrEqualTo: startOfDay.millisecondsSinceEpoch)
+          .where('timestamp', isLessThan: endOfDay.millisecondsSinceEpoch)
+          .get();
+
+      for (final doc in waterQuery.docs) {
+        await doc.reference.delete();
+      }
+
+      print('Günlük veriler sıfırlandı: ${foodQuery.docs.length} yemek, ${waterQuery.docs.length} su kaydı silindi');
+      return true;
+    } catch (e) {
+      print('Günlük veri sıfırlama hatası: $e');
+      return false;
+    }
+  }
+
+  // Arşivlenmiş verileri getirme (history_tab için)
+  Future<List<FoodItem>> getArchivedFoodHistory(String userId) async {
+    try {
+      // Hem normal food_items hem de food_archive'den al
+      final normalQuery = await _firestore
+          .collection('food_items')
+          .where('userId', isEqualTo: userId)
+          .orderBy('scannedAt', descending: true)
+          .get();
+
+      final archiveQuery = await _firestore
+          .collection('food_archive')
+          .where('userId', isEqualTo: userId)
+          .orderBy('scannedAt', descending: true)
+          .get();
+
+      List<FoodItem> allFoods = [];
+      
+      // Normal kayıtları ekle
+      allFoods.addAll(normalQuery.docs
+          .map((doc) => FoodItem.fromMap(doc.data() as Map<String, dynamic>))
+          .toList());
+      
+      // Arşiv kayıtlarını ekle
+      allFoods.addAll(archiveQuery.docs
+          .map((doc) => FoodItem.fromMap(doc.data() as Map<String, dynamic>))
+          .toList());
+
+      // Tarihe göre sırala
+      allFoods.sort((a, b) => b.scannedAt.compareTo(a.scannedAt));
+
+      return allFoods;
+    } catch (e) {
+      print('Arşiv yemek geçmişi getirme hatası: $e');
+      return [];
     }
   }
 

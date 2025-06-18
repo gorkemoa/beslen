@@ -1,13 +1,19 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class UserProfile {
   final String id;
   final String name;
   final int age;
   final double weight;
   final double height;
-  final String goal; // "weight_loss", "maintain", "weight_gain"
-  final String activityLevel; // "sedentary", "light", "moderate", "active"
-  final double dailyWaterTarget; // Günlük su hedefi (litre)
-  final DateTime createdAt;
+  final String gender;
+  final String activityLevel;
+  final String goal;
+  final double dailyWaterTarget;
+  final DateTime? lastSleepTime; // Son uyku zamanı
+  final DateTime? lastWakeUpTime; // Son uyanma zamanı
+  final DateTime? lastResetDate; // Son sıfırlama tarihi
+  final double? lastSleepDuration; // Son uyku süresi (saat)
 
   UserProfile({
     required this.id,
@@ -15,28 +21,16 @@ class UserProfile {
     required this.age,
     required this.weight,
     required this.height,
-    required this.goal,
+    required this.gender,
     required this.activityLevel,
-    double? dailyWaterTarget,
-    required this.createdAt,
-  }) : dailyWaterTarget = dailyWaterTarget ?? _calculateRecommendedWaterIntake(weight, activityLevel);
+    required this.goal,
+    required this.dailyWaterTarget,
+    this.lastSleepTime,
+    this.lastWakeUpTime,
+    this.lastResetDate,
+    this.lastSleepDuration,
+  });
 
-  // Önerilen günlük su tüketimi hesaplama (litre)
-  static double _calculateRecommendedWaterIntake(double weight, String activityLevel) {
-    // Temel hesaplama: Kilo başına 35ml
-    double baseWater = (weight * 35) / 1000; // litreye çevir
-    
-    // Aktivite seviyesine göre ayarlama
-    double activityMultiplier = switch (activityLevel) {
-      'sedentary' => 1.0,
-      'light' => 1.1,
-      'moderate' => 1.2,
-      'active' => 1.3,
-      _ => 1.0,
-    };
-    
-    return (baseWater * activityMultiplier).clamp(1.5, 4.0); // 1.5-4 litre arası
-  }
 
   // BMR hesaplama (Basal Metabolic Rate - Harris-Benedict)
   double get bmr {
@@ -65,29 +59,80 @@ class UserProfile {
 
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
       'name': name,
       'age': age,
       'weight': weight,
       'height': height,
-      'goal': goal,
+      'gender': gender,
       'activityLevel': activityLevel,
+      'goal': goal,
+      'dailyCalorieNeeds': dailyCalorieNeeds,
       'dailyWaterTarget': dailyWaterTarget,
-      'createdAt': createdAt.millisecondsSinceEpoch,
+      'lastSleepTime': lastSleepTime != null 
+          ? Timestamp.fromDate(lastSleepTime!)
+          : null,
+      'lastWakeUpTime': lastWakeUpTime != null 
+          ? Timestamp.fromDate(lastWakeUpTime!)
+          : null,
+      'lastResetDate': lastResetDate != null 
+          ? Timestamp.fromDate(lastResetDate!)
+          : null,
+      'lastSleepDuration': lastSleepDuration,
     };
   }
 
-  static UserProfile fromMap(Map<String, dynamic> map) {
+  factory UserProfile.fromMap(Map<String, dynamic> map, String id) {
     return UserProfile(
-      id: map['id'] ?? '',
+      id: id,
       name: map['name'] ?? '',
-      age: map['age']?.toInt() ?? 0,
-      weight: map['weight']?.toDouble() ?? 0.0,
-      height: map['height']?.toDouble() ?? 0.0,
-      goal: map['goal'] ?? 'maintain',
-      activityLevel: map['activityLevel'] ?? 'sedentary',
-      dailyWaterTarget: map['dailyWaterTarget']?.toDouble(),
-      createdAt: DateTime.fromMillisecondsSinceEpoch(map['createdAt'] ?? 0),
+      age: map['age'] ?? 0,
+      weight: (map['weight'] ?? 0.0).toDouble(),
+      height: (map['height'] ?? 0.0).toDouble(),
+      gender: map['gender'] ?? '',
+      activityLevel: map['activityLevel'] ?? '',
+      goal: map['goal'] ?? '',
+      dailyWaterTarget: (map['dailyWaterTarget'] ?? 2.5).toDouble(),
+      lastSleepTime: map['lastSleepTime'] != null 
+          ? (map['lastSleepTime'] as Timestamp).toDate()
+          : null,
+      lastWakeUpTime: map['lastWakeUpTime'] != null 
+          ? (map['lastWakeUpTime'] as Timestamp).toDate()
+          : null,
+      lastResetDate: map['lastResetDate'] != null 
+          ? (map['lastResetDate'] as Timestamp).toDate()
+          : null,
+      lastSleepDuration: map['lastSleepDuration']?.toDouble(),
+    );
+  }
+
+  UserProfile copyWith({
+    String? name,
+    int? age,
+    double? weight,
+    double? height,
+    String? gender,
+    String? activityLevel,
+    String? goal,
+    double? dailyWaterTarget,
+    DateTime? lastSleepTime,
+    DateTime? lastWakeUpTime,
+    DateTime? lastResetDate,
+    double? lastSleepDuration,
+  }) {
+    return UserProfile(
+      id: id,
+      name: name ?? this.name,
+      age: age ?? this.age,
+      weight: weight ?? this.weight,
+      height: height ?? this.height,
+      gender: gender ?? this.gender,
+      activityLevel: activityLevel ?? this.activityLevel,
+      goal: goal ?? this.goal,
+      dailyWaterTarget: dailyWaterTarget ?? this.dailyWaterTarget,
+      lastSleepTime: lastSleepTime ?? this.lastSleepTime,
+      lastWakeUpTime: lastWakeUpTime ?? this.lastWakeUpTime,
+      lastResetDate: lastResetDate ?? this.lastResetDate,
+      lastSleepDuration: lastSleepDuration ?? this.lastSleepDuration,
     );
   }
 } 
