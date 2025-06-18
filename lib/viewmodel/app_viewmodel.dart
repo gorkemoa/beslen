@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/food_item.dart';
 import '../models/user_profile.dart';
 import '../models/water_intake.dart';
+import '../models/sleep_record.dart';
 import '../service/firebase_service.dart';
 import '../service/ai_service.dart';
 
@@ -14,6 +16,8 @@ class AppViewModel extends ChangeNotifier {
   List<FoodItem> _todaysFoods = [];
   List<WaterIntake> _todaysWaterIntake = [];
   List<WaterIntake> _waterHistory = [];
+  List<SleepRecord> _sleepHistory = [];
+  Map<String, dynamic> _sleepStatistics = {};
   bool _isLoading = false;
   String? _error;
 
@@ -23,6 +27,8 @@ class AppViewModel extends ChangeNotifier {
   List<FoodItem> get todaysFoods => _todaysFoods;
   List<WaterIntake> get todaysWaterIntake => _todaysWaterIntake;
   List<WaterIntake> get waterHistory => _waterHistory;
+  List<SleepRecord> get sleepHistory => _sleepHistory;
+  Map<String, dynamic> get sleepStatistics => _sleepStatistics;
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get hasProfile => _userProfile != null;
@@ -150,6 +156,8 @@ class AppViewModel extends ChangeNotifier {
       _todaysFoods.clear();
       _todaysWaterIntake.clear();
       _waterHistory.clear();
+      _sleepHistory.clear();
+      _sleepStatistics.clear();
       _error = null;
       
       print('AppViewModel: Kullanıcı verileri temizlendi');
@@ -163,6 +171,8 @@ class AppViewModel extends ChangeNotifier {
       _todaysFoods.clear();
       _todaysWaterIntake.clear();
       _waterHistory.clear();
+      _sleepHistory.clear();
+      _sleepStatistics.clear();
       
       // Hata mesajını set et ama throw etme, çıkış işlemi devam etsin
       _setError('Çıkış sırasında bir hata oluştu, ancak yerel veriler temizlendi.');
@@ -187,6 +197,8 @@ class AppViewModel extends ChangeNotifier {
           await loadFoodHistory();
           await loadTodaysWaterIntake();
           await loadWaterHistory();
+          await loadSleepHistory();
+          await loadSleepStatistics();
         } else {
           print('Profil bulunamadı, yeni kullanıcı olabilir');
         }
@@ -409,6 +421,24 @@ class AppViewModel extends ChangeNotifier {
     return _userProfile?.lastSleepTime != null;
   }
 
+  // Uyku geçmişini yükleme
+  Future<void> loadSleepHistory() async {
+    final user = _firebaseService.currentUser;
+    if (user != null) {
+      _sleepHistory = await _firebaseService.getUserSleepHistory(user.uid);
+      notifyListeners();
+    }
+  }
+
+  // Uyku istatistiklerini yükleme
+  Future<void> loadSleepStatistics() async {
+    final user = _firebaseService.currentUser;
+    if (user != null) {
+      _sleepStatistics = await _firebaseService.getSleepStatistics(user.uid);
+      notifyListeners();
+    }
+  }
+
   // Uyudum - günlük verileri arşivle ve sıfırla
   Future<bool> goToSleep() async {
     final user = _firebaseService.currentUser;
@@ -416,6 +446,19 @@ class AppViewModel extends ChangeNotifier {
 
     _setLoading(true);
     try {
+      final now = DateTime.now();
+      
+      // Uyku kaydı oluştur
+      final sleepRecord = SleepRecord(
+        id: '${user.uid}_${now.millisecondsSinceEpoch}',
+        userId: user.uid,
+        sleepTime: now,
+        createdAt: now,
+      );
+      
+      // Uyku kaydını kaydet
+      await _firebaseService.saveSleepRecord(sleepRecord);
+      
       // Firebase'de uyku zamanını kaydet ve verileri arşivle
       final success = await _firebaseService.setSleepTime(user.uid);
       
@@ -433,6 +476,7 @@ class AppViewModel extends ChangeNotifier {
         // Geçmişi güncelle (arşivlenmiş veriler dahil)
         await loadFoodHistory();
         await loadWaterHistory();
+        await loadSleepHistory();
         
         notifyListeners();
         return true;
@@ -453,6 +497,21 @@ class AppViewModel extends ChangeNotifier {
 
     _setLoading(true);
     try {
+      final now = DateTime.now();
+      
+      // Son uyku kaydını al ve güncelle
+      final lastSleepRecord = await _firebaseService.getLastSleepRecord(user.uid);
+      if (lastSleepRecord != null && lastSleepRecord.wakeUpTime == null) {
+        final duration = now.difference(lastSleepRecord.sleepTime).inMinutes / 60.0;
+        final quality = SleepRecord.calculateQuality(duration);
+        
+        await _firebaseService.updateSleepRecord(lastSleepRecord.id, {
+          'wakeUpTime': Timestamp.fromDate(now),
+          'duration': duration,
+          'quality': quality,
+        });
+      }
+      
       // Firebase'de uyanma zamanını kaydet
       final success = await _firebaseService.setWakeUpTime(user.uid);
       
@@ -463,6 +522,10 @@ class AppViewModel extends ChangeNotifier {
         // Bugünün verilerini yükle (temiz başlangıç)
         await loadTodaysFoods();
         await loadTodaysWaterIntake();
+        
+        // Uyku verilerini güncelle
+        await loadSleepHistory();
+        await loadSleepStatistics();
         
         notifyListeners();
         return true;

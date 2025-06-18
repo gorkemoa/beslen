@@ -5,6 +5,7 @@ import 'dart:convert';
 import '../../viewmodel/app_viewmodel.dart';
 import '../../models/food_item.dart';
 import '../../models/user_profile.dart';
+import '../../models/sleep_record.dart';
 
 class HistoryTab extends StatefulWidget {
   const HistoryTab({super.key});
@@ -174,13 +175,15 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
           return _buildEmptyProfileState();
         }
 
-        return RefreshIndicator(
-          onRefresh: () async {
-            // Uyku verilerini yenile
-            await appViewModel.loadUserProfile();
-          },
-          child: _buildSleepHistoryList(context, appViewModel),
-        );
+                 return RefreshIndicator(
+           onRefresh: () async {
+             // Uyku verilerini yenile
+             await appViewModel.loadUserProfile();
+             await appViewModel.loadSleepHistory();
+             await appViewModel.loadSleepStatistics();
+           },
+           child: _buildSleepHistoryList(context, appViewModel),
+         );
       },
     );
   }
@@ -530,12 +533,12 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
         _buildCurrentSleepStatus(context, appViewModel),
         const SizedBox(height: 16),
         
-        // Uyku istatistikleri
-        _buildSleepStats(context, profile),
+                 // Uyku istatistikleri
+         _buildSleepStats(context, appViewModel),
         const SizedBox(height: 16),
         
-        // Uyku geçmişi (simüle edilmiş - gerçek uygulamada veritabanından gelecek)
-        _buildSleepHistoryCard(context),
+                 // Uyku geçmişi
+         _buildSleepHistoryCard(context, appViewModel.sleepHistory),
       ],
     );
   }
@@ -610,7 +613,14 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildSleepStats(BuildContext context, UserProfile profile) {
+  Widget _buildSleepStats(BuildContext context, AppViewModel appViewModel) {
+    final stats = appViewModel.sleepStatistics;
+    final profile = appViewModel.userProfile!;
+    
+    final averageDuration = stats['averageDuration'] ?? 0.0;
+    final totalSleepTime = stats['totalSleepTime'] ?? 0.0;
+    final recordCount = stats['recordCount'] ?? 0;
+    
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -661,7 +671,9 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
               Expanded(
                 child: _buildStatCard(
                   'Ortalama',
-                  '7.5h', // Simüle edilmiş veri
+                  averageDuration > 0 
+                    ? '${averageDuration.toStringAsFixed(1)}h'
+                    : 'Veri yok',
                   Colors.green.shade400,
                   Icons.timeline,
                 ),
@@ -673,19 +685,21 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
             children: [
               Expanded(
                 child: _buildStatCard(
-                  'Bu Hafta',
-                  '52.5h', // Simüle edilmiş veri
+                  'Bu Ay',
+                  totalSleepTime > 0 
+                    ? '${totalSleepTime.toStringAsFixed(1)}h'
+                    : 'Veri yok',
                   Colors.orange.shade400,
-                  Icons.calendar_view_week,
+                  Icons.calendar_view_month,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _buildStatCard(
-                  'Kalite',
-                  _getSleepQuality(profile.lastSleepDuration ?? 7.5),
-                  _getSleepQualityColor(profile.lastSleepDuration ?? 7.5),
-                  Icons.star,
+                  'Kayıt Sayısı',
+                  recordCount > 0 ? '$recordCount gün' : 'Veri yok',
+                  Colors.purple.shade400,
+                  Icons.bar_chart,
                 ),
               ),
             ],
@@ -726,9 +740,8 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildSleepHistoryCard(BuildContext context) {
-    // Simüle edilmiş uyku geçmişi verisi
-    final sleepHistory = _generateMockSleepHistory();
+  Widget _buildSleepHistoryCard(BuildContext context, List<SleepRecord> sleepHistory) {
+    final displayHistory = sleepHistory.take(7).toList(); // Son 7 gün göster
     
     return Container(
       padding: const EdgeInsets.all(20),
@@ -755,7 +768,7 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
               ),
               const SizedBox(width: 8),
               Text(
-                'Son 7 Gün',
+                'Son ${sleepHistory.length > 7 ? '7' : sleepHistory.length} Gün',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -764,17 +777,43 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
           ),
           const SizedBox(height: 16),
           
-          ...sleepHistory.map((sleep) => _buildSleepHistoryItem(sleep)).toList(),
+          if (displayHistory.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.bedtime_off,
+                      size: 48,
+                      color: Colors.grey.shade400,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Henüz uyku kaydı yok',
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            ...displayHistory.map((sleep) => _buildSleepHistoryItemFromRecord(sleep)).toList(),
         ],
       ),
     );
   }
 
-  Widget _buildSleepHistoryItem(Map<String, dynamic> sleep) {
-    final date = sleep['date'] as DateTime;
-    final duration = sleep['duration'] as double;
-    final bedTime = sleep['bedTime'] as String;
-    final wakeTime = sleep['wakeTime'] as String;
+  Widget _buildSleepHistoryItemFromRecord(SleepRecord sleep) {
+    final date = sleep.sleepTime;
+    final duration = sleep.duration ?? 0.0;
+    final bedTime = DateFormat('HH:mm').format(sleep.sleepTime);
+    final wakeTime = sleep.wakeUpTime != null 
+        ? DateFormat('HH:mm').format(sleep.wakeUpTime!)
+        : 'Devam ediyor';
     
     final isToday = _isToday(date);
     final isYesterday = _isYesterday(date);
@@ -827,7 +866,7 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
                       ),
                     ),
                     Text(
-                      '${duration.toStringAsFixed(1)}h',
+                      duration > 0 ? '${duration.toStringAsFixed(1)}h' : 'Devam ediyor',
                       style: TextStyle(
                         color: _getSleepQualityColor(duration),
                         fontWeight: FontWeight.bold,
@@ -854,7 +893,7 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      _getSleepQuality(duration),
+                      sleep.qualityText,
                       style: TextStyle(
                         color: _getSleepQualityColor(duration),
                         fontSize: 12,
@@ -871,26 +910,7 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
     );
   }
 
-  List<Map<String, dynamic>> _generateMockSleepHistory() {
-    final history = <Map<String, dynamic>>[];
-    final now = DateTime.now();
-    
-    for (int i = 0; i < 7; i++) {
-      final date = now.subtract(Duration(days: i));
-      final duration = 6.5 + (i * 0.3) + (i.isEven ? 0.5 : -0.2);
-      final bedHour = 23 + (i % 2);
-      final wakeHour = bedHour + duration.round();
-      
-      history.add({
-        'date': date,
-        'duration': duration,
-        'bedTime': '${bedHour}:${(i * 15) % 60}',
-        'wakeTime': '${wakeHour}:${(i * 10) % 60}',
-      });
-    }
-    
-    return history;
-  }
+
 
   String _getSleepQuality(double hours) {
     if (hours < 6) return 'Az';

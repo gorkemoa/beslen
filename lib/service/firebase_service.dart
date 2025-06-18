@@ -10,6 +10,7 @@ import 'dart:math';
 import '../models/food_item.dart';
 import '../models/user_profile.dart';
 import '../models/water_intake.dart';
+import '../models/sleep_record.dart';
 
 class FirebaseService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -692,6 +693,130 @@ class FirebaseService {
     } catch (e) {
       print('Arşiv yemek geçmişi getirme hatası: $e');
       return [];
+    }
+  }
+
+  // UYKU KAYITLARI FONKSİYONLARI
+
+  // Uyku kaydı kaydetme
+  Future<bool> saveSleepRecord(SleepRecord sleepRecord) async {
+    return await _retryFirestoreOperation(
+      () async {
+        await _firestore
+            .collection('sleep_records')
+            .doc(sleepRecord.id)
+            .set(sleepRecord.toMap());
+        return true;
+      },
+      'Uyku kaydı kaydetme',
+    ) ?? false;
+  }
+
+  // Kullanıcının uyku geçmişini getirme
+  Future<List<SleepRecord>> getUserSleepHistory(String userId, {int limit = 30}) async {
+    try {
+      final query = await _firestore
+          .collection('sleep_records')
+          .where('userId', isEqualTo: userId)
+          .orderBy('sleepTime', descending: true)
+          .limit(limit)
+          .get();
+
+      return query.docs
+          .map((doc) => SleepRecord.fromMap(doc.data(), doc.id))
+          .toList();
+    } catch (e) {
+      print('Uyku geçmişi getirme hatası: $e');
+      return [];
+    }
+  }
+
+  // Son uyku kaydını getirme
+  Future<SleepRecord?> getLastSleepRecord(String userId) async {
+    try {
+      final query = await _firestore
+          .collection('sleep_records')
+          .where('userId', isEqualTo: userId)
+          .orderBy('sleepTime', descending: true)
+          .limit(1)
+          .get();
+
+      if (query.docs.isNotEmpty) {
+        return SleepRecord.fromMap(query.docs.first.data(), query.docs.first.id);
+      }
+      return null;
+    } catch (e) {
+      print('Son uyku kaydı getirme hatası: $e');
+      return null;
+    }
+  }
+
+  // Uyku kaydını güncelleme (uyanma zamanı vs.)
+  Future<bool> updateSleepRecord(String sleepRecordId, Map<String, dynamic> updates) async {
+    return await _retryFirestoreOperation(
+      () async {
+        await _firestore
+            .collection('sleep_records')
+            .doc(sleepRecordId)
+            .update(updates);
+        return true;
+      },
+      'Uyku kaydı güncelleme',
+    ) ?? false;
+  }
+
+  // Uyku istatistikleri hesaplama
+  Future<Map<String, dynamic>> getSleepStatistics(String userId, {int days = 30}) async {
+    try {
+      final endDate = DateTime.now();
+      final startDate = endDate.subtract(Duration(days: days));
+
+      final query = await _firestore
+          .collection('sleep_records')
+          .where('userId', isEqualTo: userId)
+          .where('sleepTime', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+          .where('sleepTime', isLessThanOrEqualTo: Timestamp.fromDate(endDate))
+          .get();
+
+      final records = query.docs
+          .map((doc) => SleepRecord.fromMap(doc.data(), doc.id))
+          .where((record) => record.duration != null)
+          .toList();
+
+      if (records.isEmpty) {
+        return {
+          'averageDuration': 0.0,
+          'totalSleepTime': 0.0,
+          'recordCount': 0,
+          'qualityDistribution': <String, int>{},
+        };
+      }
+
+      final durations = records.map((r) => r.duration!).toList();
+      final averageDuration = durations.reduce((a, b) => a + b) / durations.length;
+      final totalSleepTime = durations.reduce((a, b) => a + b);
+
+      // Kalite dağılımı
+      Map<String, int> qualityDistribution = {};
+      for (final record in records) {
+        qualityDistribution[record.quality] = (qualityDistribution[record.quality] ?? 0) + 1;
+      }
+
+      return {
+        'averageDuration': averageDuration,
+        'totalSleepTime': totalSleepTime,
+        'recordCount': records.length,
+        'qualityDistribution': qualityDistribution,
+        'records': records,
+      };
+    } catch (e) {
+      print('Uyku istatistikleri hesaplama hatası: $e');
+      return {
+        'averageDuration': 0.0,
+        'totalSleepTime': 0.0,
+        'recordCount': 0,
+        'qualityDistribution': <String, int>{},
+      };
     }
   }
 
