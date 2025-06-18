@@ -102,11 +102,11 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black),
+        iconTheme: IconThemeData(color: Theme.of(context).colorScheme.onSurface),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -123,7 +123,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                   _isLogin ? 'Giriş Yap' : 'Hesap Oluştur',
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: const Color(0xFF2E7D32),
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -133,7 +133,7 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                     ? 'Hesabınıza giriş yapın'
                     : 'Yeni hesap oluşturun',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Colors.grey.shade600,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   ),
                 ),
                 
@@ -143,13 +143,27 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   decoration: InputDecoration(
                     labelText: 'E-posta',
                     hintText: 'ornek@email.com',
-                    prefixIcon: const Icon(Icons.email_outlined),
+                    labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+                    hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
+                    prefixIcon: Icon(Icons.email_outlined, color: Theme.of(context).colorScheme.primary),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Theme.of(context).colorScheme.outline),
                     ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Theme.of(context).colorScheme.outline),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+                    ),
+                    fillColor: Theme.of(context).colorScheme.surface,
+                    filled: true,
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -168,19 +182,34 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                 TextFormField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
+                  style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
                   decoration: InputDecoration(
                     labelText: 'Şifre',
                     hintText: 'En az 6 karakter',
-                    prefixIcon: const Icon(Icons.lock_outline),
+                    labelStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7)),
+                    hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
+                    prefixIcon: Icon(Icons.lock_outline, color: Theme.of(context).colorScheme.primary),
                     suffixIcon: IconButton(
                       icon: Icon(
                         _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                       ),
                       onPressed: _togglePasswordVisibility,
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Theme.of(context).colorScheme.outline),
                     ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Theme.of(context).colorScheme.outline),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+                    ),
+                    fillColor: Theme.of(context).colorScheme.surface,
+                    filled: true,
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -198,32 +227,32 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                 // Giriş/Kayıt butonu
                 SizedBox(
                   width: double.infinity,
-                  height: 56,
+                  height: 50,
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _handleSubmit,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF4CAF50),
-                      foregroundColor: Colors.white,
+                      backgroundColor: Theme.of(context).colorScheme.primary,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
                     child: _isLoading
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ? SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              color: Theme.of(context).colorScheme.onPrimary,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Text(
+                            _isLogin ? 'Giriş Yap' : 'Hesap Oluştur',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Theme.of(context).colorScheme.onPrimary,
+                            ),
                           ),
-                        )
-                      : Text(
-                          _isLogin ? 'Giriş Yap' : 'Hesap Oluştur',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
                   ),
                 ),
                 
@@ -234,36 +263,25 @@ class _EmailLoginScreenState extends State<EmailLoginScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      _isLogin ? 'Hesabınız yok mu? ' : 'Zaten hesabınız var mı? ',
-                      style: TextStyle(color: Colors.grey.shade600),
+                      _isLogin 
+                        ? 'Hesabınız yok mu? ' 
+                        : 'Zaten hesabınız var mı? ',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                      ),
                     ),
                     TextButton(
                       onPressed: _toggleMode,
                       child: Text(
-                        _isLogin ? 'Kayıt Ol' : 'Giriş Yap',
-                        style: const TextStyle(
-                          color: Color(0xFF4CAF50),
+                        _isLogin ? 'Kayıt olun' : 'Giriş yapın',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.primary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
                   ],
                 ),
-                
-                // Şifremi unuttum (sadece giriş modunda)
-                if (_isLogin) ...[
-                  const SizedBox(height: 16),
-                  TextButton(
-                    onPressed: _showForgotPasswordDialog,
-                    child: const Text(
-                      'Şifremi Unuttum',
-                      style: TextStyle(
-                        color: Color(0xFF4CAF50),
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
               ],
             ),
           ),

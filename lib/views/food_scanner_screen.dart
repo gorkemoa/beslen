@@ -8,7 +8,9 @@ import '../service/firebase_service.dart';
 import '../models/food_item.dart';
 
 class FoodScannerScreen extends StatefulWidget {
-  const FoodScannerScreen({super.key});
+  final String? mealType;
+  
+  const FoodScannerScreen({super.key, this.mealType});
 
   @override
   State<FoodScannerScreen> createState() => _FoodScannerScreenState();
@@ -152,9 +154,9 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Yemek Tara'),
+        title: Text(widget.mealType != null ? '${widget.mealType} - Yemek Tara' : 'Yemek Tara'),
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: Theme.of(context).colorScheme.primary,
@@ -184,6 +186,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
 
   Widget _buildImageSelectionCard(BuildContext context) {
     return Card(
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
@@ -191,52 +194,61 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
             Icon(
               Icons.camera_alt_outlined,
               size: 80,
-              color: Colors.grey.shade400,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
             ),
             const SizedBox(height: 24),
             Text(
               'Yemek Fotoğrafı Çekin',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Kamerayı kullanarak yemeğinizin fotoğrafını çekin veya galeriden seçin',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Colors.grey.shade600,
+              'AI ile yemeğinizin besin değerlerini analiz edin',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
               ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _pickImageFromCamera,
-                    icon: const Icon(Icons.camera_alt),
-                    label: const Text('Kamera'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Theme.of(context).colorScheme.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
+            
+            // Kamera butonu
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton.icon(
+                onPressed: _pickImageFromCamera,
+                icon: const Icon(Icons.camera_alt),
+                label: const Text('Kamera'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: _pickImageFromGallery,
-                    icon: const Icon(Icons.photo_library),
-                    label: const Text('Galeri'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey.shade600,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            
+            // Galeri butonu
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: OutlinedButton.icon(
+                onPressed: _pickImageFromGallery,
+                icon: const Icon(Icons.photo_library),
+                label: const Text('Galeri'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Theme.of(context).colorScheme.primary,
+                  side: BorderSide(color: Theme.of(context).colorScheme.primary),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-              ],
+              ),
             ),
           ],
         ),
@@ -246,63 +258,69 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
 
   Widget _buildImagePreviewCard(BuildContext context) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.file(
-                _selectedImage!,
-                width: double.infinity,
-                height: 200,
-                fit: BoxFit.cover,
-              ),
+      color: Theme.of(context).colorScheme.surface,
+      child: Column(
+        children: [
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+            child: Image.file(
+              _selectedImage!,
+              width: double.infinity,
+              height: 200,
+              fit: BoxFit.cover,
             ),
-            const SizedBox(height: 16),
-            Row(
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
               children: [
                 Expanded(
-                  child: TextButton.icon(
-                    onPressed: _pickImageFromCamera,
-                    icon: const Icon(Icons.camera_alt),
-                    label: const Text('Yeniden Çek'),
-                  ),
-                ),
-                Expanded(
-                  child: TextButton.icon(
-                    onPressed: _pickImageFromGallery,
-                    icon: const Icon(Icons.photo_library),
-                    label: const Text('Değiştir'),
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      setState(() {
+                        _selectedImage = null;
+                        _analysisResult = null;
+                      });
+                    },
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Yeni Fotoğraf'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.primary,
+                      side: BorderSide(color: Theme.of(context).colorScheme.primary),
+                    ),
                   ),
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildAnalyzingCard(BuildContext context) {
     return Card(
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
           children: [
-            const CircularProgressIndicator(),
+            CircularProgressIndicator(
+              color: Theme.of(context).colorScheme.primary,
+            ),
             const SizedBox(height: 16),
             Text(
-              'Yemek Analiz Ediliyor...',
+              'Fotoğraf Analiz Ediliyor...',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Lütfen bekleyin, yapay zeka yemeğinizi tanıyor',
-              style: TextStyle(
-                color: Colors.grey.shade600,
+              'AI yemeğinizin besin değerlerini hesaplıyor',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
               ),
               textAlign: TextAlign.center,
             ),
@@ -313,7 +331,14 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
   }
 
   Widget _buildResultCard(BuildContext context) {
+    final name = _analysisResult!['name'] ?? 'Bilinmeyen Yemek';
+    final calories = _analysisResult!['calories'] ?? 0;
+    final protein = _analysisResult!['protein'] ?? 0.0;
+    final carbs = _analysisResult!['carbs'] ?? 0.0;
+    final fat = _analysisResult!['fat'] ?? 0.0;
+
     return Card(
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -322,108 +347,75 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
             Row(
               children: [
                 Icon(
-                  Icons.check_circle,
-                  color: Colors.green,
+                  Icons.restaurant_menu,
+                  color: Theme.of(context).colorScheme.primary,
                   size: 24,
                 ),
                 const SizedBox(width: 8),
-                Text(
-                  'Analiz Tamamlandı!',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: Colors.green,
+                Expanded(
+                  child: Text(
+                    name,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            
-            Text(
-              _analysisResult!['name'],
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Güven: %${(_analysisResult!['confidence'] * 100).round()}',
-              style: TextStyle(
-                color: Colors.grey.shade600,
-                fontSize: 12,
-              ),
-            ),
             const SizedBox(height: 20),
             
-            // Nutrition info
+            // Besin değerleri
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.grey.shade50,
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Column(
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Kalori',
-                        style: TextStyle(color: Colors.grey.shade600),
-                      ),
-                      Text(
-                        '${_analysisResult!['calories']} kcal',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                  const Divider(),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Protein',
-                        style: TextStyle(color: Colors.grey.shade600),
-                      ),
-                      Text(
-                        '${_analysisResult!['protein']}g',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                  const Divider(),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Karbonhidrat',
-                        style: TextStyle(color: Colors.grey.shade600),
-                      ),
-                      Text(
-                        '${_analysisResult!['carbs']}g',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                  const Divider(),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Yağ',
-                        style: TextStyle(color: Colors.grey.shade600),
-                      ),
-                      Text(
-                        '${_analysisResult!['fat']}g',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
+                  _buildNutritionRow('Kalori', '$calories kcal', Icons.local_fire_department),
+                  const SizedBox(height: 12),
+                  _buildNutritionRow('Protein', '${protein.toStringAsFixed(1)}g', Icons.fitness_center),
+                  const SizedBox(height: 12),
+                  _buildNutritionRow('Karbonhidrat', '${carbs.toStringAsFixed(1)}g', Icons.grass),
+                  const SizedBox(height: 12),
+                  _buildNutritionRow('Yağ', '${fat.toStringAsFixed(1)}g', Icons.opacity),
                 ],
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildNutritionRow(String label, String value, IconData icon) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          size: 20,
+          color: Theme.of(context).colorScheme.primary,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
+      ],
     );
   }
 
@@ -438,24 +430,35 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
                 _analysisResult = null;
               });
             },
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+              side: BorderSide(color: Theme.of(context).colorScheme.outline),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
             child: const Text('Tekrar Dene'),
           ),
         ),
         const SizedBox(width: 16),
         Expanded(
+          flex: 2,
           child: ElevatedButton(
             onPressed: _isAnalyzing ? null : _saveFoodItem,
             style: ElevatedButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.primary,
-              foregroundColor: Colors.white,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: _isAnalyzing
-                ? const SizedBox(
+                ? SizedBox(
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
+                      color: Theme.of(context).colorScheme.onPrimary,
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                     ),
                   )
                 : const Text('Kaydet'),

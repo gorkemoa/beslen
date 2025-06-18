@@ -45,6 +45,7 @@ class RecommendationsTab extends StatelessWidget {
   }
 
   Widget _buildNoProfileState(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -52,21 +53,21 @@ class RecommendationsTab extends StatelessWidget {
           Icon(
             Icons.person_outline,
             size: 80,
-            color: Colors.grey.shade400,
+            color: isDarkMode ? Colors.grey.shade700 : Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
           ),
           const SizedBox(height: 16),
           Text(
             'Öneriler için Profil Gerekli',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
-              color: Colors.grey.shade600,
+              color: isDarkMode ? Colors.grey.shade500 : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
             ),
           ),
           const SizedBox(height: 8),
           Text(
             'Size özel öneriler için profil bilgilerinizi tamamlayın',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Colors.grey.shade500,
+              color: isDarkMode ? Colors.grey.shade600 : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
             ),
             textAlign: TextAlign.center,
           ),
@@ -113,16 +114,20 @@ class RecommendationsTab extends StatelessWidget {
 
   Widget _buildLoadingCard(BuildContext context, String message) {
     return Card(
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
           children: [
-            const CircularProgressIndicator(),
+            CircularProgressIndicator(
+              color: Theme.of(context).colorScheme.primary,
+            ),
             const SizedBox(height: 16),
             Text(
               message,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
               textAlign: TextAlign.center,
             ),
@@ -134,6 +139,7 @@ class RecommendationsTab extends StatelessWidget {
 
   Widget _buildErrorCard(BuildContext context, String error) {
     return Card(
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -155,7 +161,7 @@ class RecommendationsTab extends StatelessWidget {
             Text(
               error,
               style: TextStyle(
-                color: Colors.grey.shade600,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                 fontSize: 12,
               ),
               textAlign: TextAlign.center,
@@ -173,6 +179,7 @@ class RecommendationsTab extends StatelessWidget {
     final achievements = List<String>.from(analysis['achievements'] ?? []);
 
     return Card(
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -189,6 +196,7 @@ class RecommendationsTab extends StatelessWidget {
                   'Günlük Beslenme Analizi',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ],
@@ -205,66 +213,61 @@ class RecommendationsTab extends StatelessWidget {
                       Text(
                         'Beslenme Skoru',
                         style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Text(
-                            '$score',
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const Text(
-                            '/100',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.grey,
-                            ),
-                          ),
-                        ],
+                      Text(
+                        '$score/100',
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: score >= 80 ? Colors.green : score >= 60 ? Colors.orange : Colors.red,
+                        ),
                       ),
                     ],
                   ),
                 ),
-                Container(
+                SizedBox(
                   width: 60,
                   height: 60,
-                  decoration: BoxDecoration(
-                    color: _getScoreColor(score).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  child: Center(
-                    child: Icon(
-                      _getScoreIcon(score),
-                      color: _getScoreColor(score),
-                      size: 30,
+                  child: CircularProgressIndicator(
+                    value: score / 100,
+                    strokeWidth: 6,
+                    backgroundColor: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      score >= 80 ? Colors.green : score >= 60 ? Colors.orange : Colors.red,
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
             
-            Text(
-              analysisText,
-              style: TextStyle(
-                color: Colors.grey.shade700,
-                fontSize: 14,
+            if (analysisText.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  analysisText,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontSize: 14,
+                  ),
+                ),
               ),
-            ),
+            ],
             
             if (achievements.isNotEmpty) ...[
               const SizedBox(height: 16),
               Text(
-                'Başarılarınız',
+                'Başarılar',
                 style: TextStyle(
                   fontWeight: FontWeight.w600,
-                  color: Colors.green.shade700,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
               const SizedBox(height: 8),
@@ -272,44 +275,14 @@ class RecommendationsTab extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 4),
                 child: Row(
                   children: [
-                    Icon(Icons.check_circle, color: Colors.green, size: 16),
+                    Icon(Icons.check_circle, size: 16, color: Colors.green),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         achievement,
                         style: TextStyle(
-                          color: Colors.grey.shade700,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              )),
-            ],
-            
-            if (recommendations.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              Text(
-                'Öneriler',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              ...recommendations.map((rec) => Padding(
-                padding: const EdgeInsets.only(bottom: 4),
-                child: Row(
-                  children: [
-                    Icon(Icons.lightbulb_outline, color: Colors.orange, size: 16),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        rec,
-                        style: TextStyle(
-                          color: Colors.grey.shade700,
-                          fontSize: 12,
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontSize: 13,
                         ),
                       ),
                     ),
@@ -325,6 +298,7 @@ class RecommendationsTab extends StatelessWidget {
 
   Widget _buildRecommendationsCard(BuildContext context, List<Map<String, dynamic>> recommendations) {
     return Card(
+      color: Theme.of(context).colorScheme.surface,
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -333,256 +307,148 @@ class RecommendationsTab extends StatelessWidget {
             Row(
               children: [
                 Icon(
-                  Icons.restaurant_menu,
+                  Icons.lightbulb_outline,
                   color: Theme.of(context).colorScheme.primary,
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Akıllı Yemek Önerileri',
+                  'Akıllı Öneriler',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
             
-            if (recommendations.isEmpty)
-              Text(
-                'Şu anda öneri bulunmuyor.',
-                style: TextStyle(
-                  color: Colors.grey.shade600,
-                ),
-              )
-            else
-              ...recommendations.map((rec) => _buildAdvancedRecommendationItem(
-                context,
-                rec,
-              )),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAdvancedRecommendationItem(BuildContext context, Map<String, dynamic> recommendation) {
-    final name = recommendation['name'] ?? '';
-    final reason = recommendation['reason'] ?? '';
-    final calories = recommendation['calories'] ?? 0;
-    final protein = recommendation['protein'] ?? 0.0;
-    final carbs = recommendation['carbs'] ?? 0.0;
-    final fat = recommendation['fat'] ?? 0.0;
-    final type = recommendation['type'] ?? 'food';
-    final priority = recommendation['priority'] ?? 'medium';
-    final preparationTime = recommendation['preparation_time'] ?? '';
-    final healthBenefits = List<String>.from(recommendation['health_benefits'] ?? []);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade50,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: _getPriorityColor(priority).withOpacity(0.3),
-          width: 1,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: _getTypeColor(type).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Icon(
-                  _getTypeIcon(type),
-                  color: _getTypeColor(type),
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
+            if (recommendations.isEmpty) ...[
+              Center(
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            name,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: _getPriorityColor(priority).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            priority == 'high' ? 'Öncelikli' : priority == 'medium' ? 'Orta' : 'Düşük',
-                            style: TextStyle(
-                              color: _getPriorityColor(priority),
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
+                    Icon(
+                      Icons.eco_outlined,
+                      size: 48,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.4),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Daha fazla yemek tarayın!',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                      ),
                     ),
                     const SizedBox(height: 4),
-                    if (preparationTime.isNotEmpty)
-                      Text(
-                        '⏱️ $preparationTime',
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontSize: 12,
-                        ),
+                    Text(
+                      'Size özel öneriler için daha fazla veri gerekli',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
                       ),
+                      textAlign: TextAlign.center,
+                    ),
                   ],
                 ),
               ),
+            ] else ...[
+              ...recommendations.map((rec) => _buildRecommendationItem(context, rec)),
             ],
-          ),
-          const SizedBox(height: 12),
-          
-          Text(
-            reason,
-            style: TextStyle(
-              color: Colors.grey.shade700,
-              fontSize: 13,
-            ),
-          ),
-          
-          const SizedBox(height: 12),
-          
-          // Nutrition info
-          Row(
-            children: [
-              _buildNutritionChip('🔥 $calories kcal', Colors.red),
-              const SizedBox(width: 8),
-              _buildNutritionChip('💪 ${protein.toStringAsFixed(1)}g', Colors.blue),
-              const SizedBox(width: 8),
-              _buildNutritionChip('🌾 ${carbs.toStringAsFixed(1)}g', Colors.orange),
-              const SizedBox(width: 8),
-              _buildNutritionChip('🥑 ${fat.toStringAsFixed(1)}g', Colors.green),
-            ],
-          ),
-          
-          if (healthBenefits.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Text(
-              'Sağlık Faydaları:',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
-                color: Colors.green.shade700,
-              ),
-            ),
-            const SizedBox(height: 4),
-            ...healthBenefits.map((benefit) => Padding(
-              padding: const EdgeInsets.only(left: 8, bottom: 2),
-              child: Row(
-                children: [
-                  Icon(Icons.fiber_manual_record, size: 4, color: Colors.green),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      benefit,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey.shade600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            )),
           ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNutritionChip(String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: color,
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
         ),
       ),
     );
   }
 
-  Color _getScoreColor(int score) {
-    if (score >= 80) return Colors.green;
-    if (score >= 60) return Colors.orange;
-    return Colors.red;
-  }
-
-  IconData _getScoreIcon(int score) {
-    if (score >= 80) return Icons.sentiment_very_satisfied;
-    if (score >= 60) return Icons.sentiment_neutral;
-    return Icons.sentiment_dissatisfied;
-  }
-
-  Color _getTypeColor(String type) {
-    switch (type.toLowerCase()) {
-      case 'main':
-        return Colors.blue;
-      case 'snack':
-        return Colors.orange;
-      case 'drink':
-        return Colors.cyan;
-      case 'healthy':
-        return Colors.green;
-      default:
-        return Colors.grey;
+  Widget _buildRecommendationItem(BuildContext context, Map<String, dynamic> recommendation) {
+    final title = recommendation['title'] ?? '';
+    final description = recommendation['description'] ?? '';
+    final type = recommendation['type'] ?? 'general';
+    final importance = recommendation['importance'] ?? 'medium';
+    
+    IconData icon = Icons.lightbulb_outline;
+    Color iconColor = Theme.of(context).colorScheme.primary;
+    
+    switch (type) {
+      case 'nutrition':
+        icon = Icons.restaurant_menu;
+        iconColor = Colors.green;
+        break;
+      case 'hydration':
+        icon = Icons.water_drop;
+        iconColor = Colors.blue;
+        break;
+      case 'exercise':
+        icon = Icons.fitness_center;
+        iconColor = Colors.orange;
+        break;
+      case 'sleep':
+        icon = Icons.bedtime;
+        iconColor = Colors.purple;
+        break;
     }
-  }
 
-  IconData _getTypeIcon(String type) {
-    switch (type.toLowerCase()) {
-      case 'main':
-        return Icons.restaurant;
-      case 'snack':
-        return Icons.cookie;
-      case 'drink':
-        return Icons.local_drink;
-      case 'healthy':
-        return Icons.eco;
-      default:
-        return Icons.fastfood;
-    }
-  }
-
-  Color _getPriorityColor(String priority) {
-    switch (priority.toLowerCase()) {
-      case 'high':
-        return Colors.red;
-      case 'medium':
-        return Colors.orange;
-      case 'low':
-        return Colors.green;
-      default:
-        return Colors.grey;
-    }
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: importance == 'high' 
+            ? Colors.red.withOpacity(0.1)
+            : Theme.of(context).colorScheme.primary.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(8),
+        border: importance == 'high'
+            ? Border.all(color: Colors.red.withOpacity(0.3))
+            : null,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Icon(
+              icon,
+              size: 20,
+              color: iconColor,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontSize: 14,
+                  ),
+                ),
+                if (description.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    description,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          if (importance == 'high')
+            Icon(
+              Icons.priority_high,
+              size: 16,
+              color: Colors.red,
+            ),
+        ],
+      ),
+    );
   }
 } 

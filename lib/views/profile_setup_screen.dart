@@ -84,7 +84,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Profil Kurulumu'),
         backgroundColor: Colors.transparent,
@@ -111,7 +111,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 Text(
                   'Size özel öneriler sunabilmek için birkaç bilgiye ihtiyacımız var.',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Colors.grey.shade600,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   ),
                 ),
                 const SizedBox(height: 32),
@@ -121,8 +121,10 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   title: 'İsminiz',
                   child: TextFormField(
                     controller: _nameController,
-                    decoration: const InputDecoration(
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                    decoration: InputDecoration(
                       hintText: 'Adınızı girin',
+                      hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
                       border: InputBorder.none,
                     ),
                     validator: (value) {
@@ -140,9 +142,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   child: TextFormField(
                     controller: _ageController,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                    decoration: InputDecoration(
                       hintText: 'Yaşınızı girin',
+                      hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
                       suffixText: 'yaş',
+                      suffixStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                       border: InputBorder.none,
                     ),
                     validator: (value) {
@@ -164,9 +169,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   child: TextFormField(
                     controller: _weightController,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                    decoration: InputDecoration(
                       hintText: 'Kilonuzu girin',
+                      hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
                       suffixText: 'kg',
+                      suffixStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                       border: InputBorder.none,
                     ),
                     validator: (value) {
@@ -188,9 +196,12 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   child: TextFormField(
                     controller: _heightController,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                    decoration: InputDecoration(
                       hintText: 'Boyunuzu girin',
+                      hintStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5)),
                       suffixText: 'cm',
+                      suffixStyle: TextStyle(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6)),
                       border: InputBorder.none,
                     ),
                     validator: (value) {
@@ -207,74 +218,55 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                 ),
 
                 // Hedef
-                _buildInputCard(
+                _buildSelectionCard(
                   title: 'Hedefiniz',
-                  child: Column(
-                    children: _goals.map((goal) {
-                      return RadioListTile<String>(
-                        title: Text(goal['label']!),
-                        value: goal['value']!,
-                        groupValue: _selectedGoal,
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedGoal = value!;
-                          });
-                        },
-                        contentPadding: EdgeInsets.zero,
-                        activeColor: Theme.of(context).colorScheme.primary,
-                      );
-                    }).toList(),
-                  ),
+                  options: _goals,
+                  selectedValue: _selectedGoal,
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedGoal = value!;
+                    });
+                  },
                 ),
 
                 // Aktivite seviyesi
-                _buildInputCard(
+                _buildSelectionCard(
                   title: 'Aktivite Seviyeniz',
-                  child: Column(
-                    children: _activities.map((activity) {
-                      return RadioListTile<String>(
-                        title: Text(activity['label']!),
-                        value: activity['value']!,
-                        groupValue: _selectedActivity,
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedActivity = value!;
-                          });
-                        },
-                        contentPadding: EdgeInsets.zero,
-                        activeColor: Theme.of(context).colorScheme.primary,
-                      );
-                    }).toList(),
-                  ),
+                  options: _activities,
+                  selectedValue: _selectedActivity,
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedActivity = value!;
+                    });
+                  },
                 ),
 
                 const SizedBox(height: 32),
 
                 // Kaydet butonu
-                Consumer<AppViewModel>(
-                  builder: (context, appViewModel, child) {
-                    return SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: ElevatedButton(
-                        onPressed: appViewModel.isLoading ? null : _saveProfile,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context).colorScheme.primary,
-                          foregroundColor: Colors.white,
-                        ),
-                        child: appViewModel.isLoading
-                            ? const CircularProgressIndicator(color: Colors.white)
-                            : const Text(
-                                'Profili Kaydet',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: _saveProfile,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).colorScheme.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    );
-                  },
+                    ),
+                    child: Text(
+                      'Profili Kaydet',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.onPrimary,
+                      ),
+                    ),
+                  ),
                 ),
+
+                const SizedBox(height: 20),
               ],
             ),
           ),
@@ -288,10 +280,15 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
     required Widget child,
   }) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 24),
+      margin: const EdgeInsets.only(bottom: 16),
       child: Card(
+        color: Theme.of(context).colorScheme.surface,
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -302,8 +299,61 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
                   color: Theme.of(context).colorScheme.primary,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
               child,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSelectionCard({
+    required String title,
+    required List<Map<String, String>> options,
+    required String selectedValue,
+    required ValueChanged<String?> onChanged,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Card(
+        color: Theme.of(context).colorScheme.surface,
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Column(
+                children: options.map((option) {
+                  return RadioListTile<String>(
+                    title: Text(
+                      option['label']!,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontSize: 14,
+                      ),
+                    ),
+                    value: option['value']!,
+                    groupValue: selectedValue,
+                    onChanged: onChanged,
+                    activeColor: Theme.of(context).colorScheme.primary,
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                  );
+                }).toList(),
+              ),
             ],
           ),
         ),

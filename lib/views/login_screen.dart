@@ -119,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -176,20 +176,20 @@ class _LoginScreenState extends State<LoginScreen> {
           width: 100,
           height: 100,
           decoration: BoxDecoration(
-            color: const Color(0xFF4CAF50),
+            color: Theme.of(context).colorScheme.primary,
             borderRadius: BorderRadius.circular(25),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF4CAF50).withOpacity(0.3),
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
             ],
           ),
-          child: const Icon(
+          child: Icon(
             Icons.restaurant_menu,
             size: 50,
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.onPrimary,
           ),
         ),
         const SizedBox(height: 24),
@@ -199,26 +199,15 @@ class _LoginScreenState extends State<LoginScreen> {
           'beslen',
           style: Theme.of(context).textTheme.headlineLarge?.copyWith(
             fontWeight: FontWeight.bold,
-            color: const Color(0xFF2E7D32),
-            fontSize: 36,
+            color: Theme.of(context).colorScheme.onSurface,
+            fontSize: 32,
           ),
         ),
         const SizedBox(height: 8),
-        
-        // Alt başlık
         Text(
           'Sağlıklı beslenmenin akıllı yolu',
           style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-            color: Colors.grey.shade600,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 16),
-        
-        Text(
-          'Giriş yapın ve beslenme yolculuğunuza başlayın',
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: Colors.grey.shade500,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
           ),
           textAlign: TextAlign.center,
         ),
@@ -229,82 +218,102 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildLoginButtons() {
     return Column(
       children: [
-        // Google ile giriş
-        _buildSocialLoginButton(
-          icon: Icons.g_mobiledata,
-          text: 'Google ile Giriş Yap',
-          color: Colors.red,
-          onPressed: _isLoading ? null : _handleGoogleSignIn,
+        // Google Giriş
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ElevatedButton.icon(
+            onPressed: _isLoading ? null : _handleGoogleSignIn,
+            icon: Icon(Icons.g_mobiledata, color: Theme.of(context).colorScheme.onPrimary),
+            label: Text(
+              'Google ile Giriş Yap',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onPrimary,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
         ),
         const SizedBox(height: 16),
         
-        // Apple ile giriş (iOS ve Android için)
-        _buildSocialLoginButton(
-          icon: Icons.apple,
-          text: 'Apple ile Giriş Yap',
-          color: Colors.black,
-          onPressed: _isLoading ? null : _handleAppleSignIn,
+        // Apple Giriş
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: ElevatedButton.icon(
+            onPressed: _isLoading ? null : _handleAppleSignIn,
+            icon: Icon(Icons.apple, color: Theme.of(context).colorScheme.onSurface),
+            label: Text(
+              'Apple ile Giriş Yap',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.surface,
+              side: BorderSide(color: Theme.of(context).colorScheme.outline),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
         ),
         const SizedBox(height: 16),
         
-        // E-posta ile giriş
-        _buildSocialLoginButton(
-          icon: Icons.email_outlined,
-          text: 'E-posta ile Giriş Yap',
-          color: const Color(0xFF4CAF50),
-          onPressed: _isLoading ? null : _navigateToEmailLogin,
+        // E-posta Giriş
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: OutlinedButton.icon(
+            onPressed: _isLoading ? null : _navigateToEmailLogin,
+            icon: Icon(
+              Icons.email_outlined,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            label: Text(
+              'E-posta ile Giriş Yap',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              side: BorderSide(color: Theme.of(context).colorScheme.primary),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
         ),
       ],
-    );
-  }
-
-  Widget _buildSocialLoginButton({
-    required IconData icon,
-    required String text,
-    required Color color,
-    required VoidCallback? onPressed,
-  }) {
-    return SizedBox(
-      width: double.infinity,
-      height: 56,
-      child: ElevatedButton.icon(
-        onPressed: onPressed,
-        icon: Icon(icon, size: 24),
-        label: Text(
-          text,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          foregroundColor: Colors.white,
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          shadowColor: color.withOpacity(0.3),
-        ),
-      ),
     );
   }
 
   Widget _buildDivider() {
     return Row(
       children: [
-        Expanded(child: Divider(color: Colors.grey.shade300)),
+        Expanded(child: Divider(color: Theme.of(context).colorScheme.outline)),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
-            'veya',
+            'ya da',
             style: TextStyle(
-              color: Colors.grey.shade500,
-              fontSize: 14,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+              fontWeight: FontWeight.w500,
             ),
           ),
         ),
-        Expanded(child: Divider(color: Colors.grey.shade300)),
+        Expanded(child: Divider(color: Theme.of(context).colorScheme.outline)),
       ],
     );
   }
@@ -312,22 +321,24 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildGuestLogin() {
     return SizedBox(
       width: double.infinity,
-      height: 56,
-      child: OutlinedButton.icon(
+      height: 50,
+      child: TextButton.icon(
         onPressed: _isLoading ? null : _handleAnonymousSignIn,
-        icon: const Icon(Icons.person_outline, size: 24),
+        icon: Icon(
+          Icons.person_outline,
+          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+        ),
         label: Text(
-          _isLoading ? 'Giriş yapılıyor...' : 'Misafir Olarak Devam Et',
-          style: const TextStyle(
+          'Misafir Olarak Devam Et',
+          style: TextStyle(
             fontSize: 16,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w500,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
           ),
         ),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFF4CAF50),
-          side: BorderSide(color: const Color(0xFF4CAF50).withOpacity(0.5)),
+        style: TextButton.styleFrom(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
       ),
@@ -335,29 +346,26 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildPrivacyInfo() {
-    return Column(
-      children: [
-        Text(
-          'Giriş yaparak Kullanım Koşulları ve Gizlilik Politikamızı kabul etmiş olursunuz.',
-          style: TextStyle(
-            color: Colors.grey.shade500,
-            fontSize: 12,
-          ),
-          textAlign: TextAlign.center,
+    return Text(
+      'Giriş yaparak Kullanım Koşulları ve Gizlilik Politikasını kabul etmiş olursunuz.',
+      style: TextStyle(
+        fontSize: 12,
+        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+      ),
+      textAlign: TextAlign.center,
+    );
+  }
+
+  Widget _buildLoadingOverlay() {
+    if (!_isLoading) return const SizedBox.shrink();
+    
+    return Container(
+      color: Theme.of(context).colorScheme.surface.withOpacity(0.8),
+      child: Center(
+        child: CircularProgressIndicator(
+          color: Theme.of(context).colorScheme.primary,
         ),
-        const SizedBox(height: 16),
-        
-        // Loading indicator
-        if (_isLoading)
-          const SizedBox(
-            width: 24,
-            height: 24,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
-            ),
-          ),
-      ],
+      ),
     );
   }
 } 

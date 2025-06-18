@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:math';
 import '../../viewmodel/app_viewmodel.dart';
 import '../../models/food_item.dart';
+import '../food_scanner_screen.dart';
 
 class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
@@ -172,15 +173,20 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     // Initialize localization for date formatting
     Intl.defaultLocale = 'tr_TR';
+    
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: isDarkMode ? Colors.black : Colors.white,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Beslen',
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+          style: TextStyle(
+            fontWeight: FontWeight.bold, 
+            color: isDarkMode ? Colors.white : Colors.black,
+          ),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: isDarkMode ? Colors.grey.shade900 : Colors.white,
         elevation: 0,
       ),
       body: Consumer<AppViewModel>(
@@ -212,9 +218,9 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                   const SizedBox(height: 16),
                   _buildAnimatedWaterIntakeCard(context, appViewModel),
                   const SizedBox(height: 16),
-                  _buildMealsCard(context),
+                  _buildMealsCard(context, isDarkMode),
                   const SizedBox(height: 16),
-                  _buildRecentScansCard(context, appViewModel),
+                  _buildRecentScansCard(context, appViewModel, isDarkMode),
                 ],
               ),
             ),
@@ -228,6 +234,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
     final profile = appViewModel.userProfile;
     final targetCalories = profile?.dailyCalorieNeeds ?? 2000;
     final percentage = appViewModel.caloriePercentage;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     final now = DateTime.now();
     final dayFormat = DateFormat('d MMMM yyyy, EEEE');
@@ -236,8 +243,9 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
     return Container(
         padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF4A90E2),
+        color: isDarkMode ? Colors.grey.shade900 : const Color(0xFF4A90E2),
         borderRadius: BorderRadius.circular(20),
+        border: isDarkMode ? Border.all(color: Colors.grey.shade700, width: 1) : null,
       ),
         child: Row(
           children: [
@@ -357,13 +365,16 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
   }
 
   Widget _buildNutrientInfo(BuildContext context, String name, String value, String unit, Color bgColor, Color textColor) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final itemWidth = (MediaQuery.of(context).size.width - 32 - 3 * 8) / 4;
+    
     return Container(
       width: itemWidth,
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
       decoration: BoxDecoration(
-        color: bgColor,
+        color: isDarkMode ? Colors.grey.shade800.withOpacity(0.5) : bgColor,
         borderRadius: BorderRadius.circular(16),
+        border: isDarkMode ? Border.all(color: Colors.grey.shade700, width: 1) : null,
       ),
       child: Column(
         children: [
@@ -372,7 +383,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
-              color: textColor,
+              color: isDarkMode ? Colors.white : textColor,
             ),
           ),
           const SizedBox(height: 2),
@@ -380,7 +391,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
             name,
             style: TextStyle(
               fontSize: 13,
-              color: textColor.withOpacity(0.8),
+              color: isDarkMode ? Colors.grey.shade300 : textColor.withOpacity(0.8),
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -401,10 +412,12 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
     final targetWater = _localWaterTarget;
     final progress = targetWater > 0 ? (currentWater / targetWater).clamp(0.0, 1.0) : 0.0;
 
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      color: Colors.grey.shade100,
+      color: isDarkMode ? Colors.grey.shade900 : Colors.grey.shade100,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -413,13 +426,23 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Su Tüketimi', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                Text(
+                  'Su Tüketimi', 
+                  style: TextStyle(
+                    fontSize: 16, 
+                    fontWeight: FontWeight.bold,
+                    color: isDarkMode ? Colors.white : Colors.black,
+                  ),
+                ),
                 AnimatedSwitcher(
                   duration: const Duration(milliseconds: 500),
                   child: Text(
                     '${currentWater.toStringAsFixed(1)} / ${targetWater.toStringAsFixed(1)} L',
                     key: ValueKey(currentWater),
-                    style: const TextStyle(fontSize: 14, color: Colors.grey),
+                    style: TextStyle(
+                      fontSize: 14, 
+                      color: isDarkMode ? Colors.grey.shade400 : Colors.grey,
+                    ),
                   ),
                 ),
               ],
@@ -785,25 +808,25 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildMealsCard(BuildContext context) {
+  Widget _buildMealsCard(BuildContext context, bool isDarkMode) {
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      color: Colors.grey.shade100,
+      color: isDarkMode ? Colors.grey.shade900 : Colors.grey.shade100,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Öğünler', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            Text('Öğünler', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black)),
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildMealItem(context, Icons.local_cafe_outlined, 'Kahvaltı', const Color(0xFFFFF8E1), Colors.orange),
-                _buildMealItem(context, Icons.restaurant_outlined, 'Öğle', const Color(0xFFE8F5E9), Colors.green),
-                _buildMealItem(context, Icons.nightlight_outlined, 'Akşam', const Color(0xFFE3F2FD), Colors.blue),
-                _buildMealItem(context, Icons.apple_outlined, 'Atıştırma', const Color(0xFFFCE4EC), Colors.red),
+                _buildMealItem(context, Icons.local_cafe_outlined, 'Kahvaltı', isDarkMode ? Colors.orange.withOpacity(0.1) : const Color(0xFFFFF8E1), Colors.orange, isDarkMode),
+                _buildMealItem(context, Icons.restaurant_outlined, 'Öğle', isDarkMode ? Colors.green.withOpacity(0.1) : const Color(0xFFE8F5E9), Colors.green, isDarkMode),
+                _buildMealItem(context, Icons.nightlight_outlined, 'Akşam', isDarkMode ? Colors.blue.withOpacity(0.1) : const Color(0xFFE3F2FD), Colors.blue, isDarkMode),
+                _buildMealItem(context, Icons.apple_outlined, 'Atıştırma', isDarkMode ? Colors.red.withOpacity(0.1) : const Color(0xFFFCE4EC), Colors.red, isDarkMode),
               ],
             ),
           ],
@@ -812,27 +835,56 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildMealItem(BuildContext context, IconData icon, String name, Color bgColor, Color iconColor) {
-    return Column(
-      children: [
-        CircleAvatar(
-          radius: 30,
-          backgroundColor: bgColor,
-          child: Icon(icon, size: 30, color: iconColor),
+  Widget _buildMealItem(BuildContext context, IconData icon, String name, Color bgColor, Color iconColor, bool isDarkMode) {
+    return GestureDetector(
+      onTap: () => _navigateToFoodScanner(context, name),
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          color: Colors.transparent,
         ),
-        const SizedBox(height: 8),
-        Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-      ],
+        child: Column(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: iconColor.withOpacity(0.2),
+                    blurRadius: 8,
+                    spreadRadius: 1,
+                  ),
+                ],
+              ),
+              child: CircleAvatar(
+                radius: 30,
+                backgroundColor: bgColor,
+                child: Icon(icon, size: 30, color: iconColor),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              name, 
+              style: TextStyle(
+                fontSize: 13, 
+                fontWeight: FontWeight.w500, 
+                color: isDarkMode ? Colors.white70 : Colors.black,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _buildRecentScansCard(BuildContext context, AppViewModel appViewModel) {
+  Widget _buildRecentScansCard(BuildContext context, AppViewModel appViewModel, bool isDarkMode) {
     final recentFoods = appViewModel.todaysFoods.take(5).toList();
 
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      color: Colors.grey.shade100,
+      color: isDarkMode ? Colors.grey.shade900 : Colors.grey.shade100,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -841,7 +893,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Son Taramalar', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                Text('Son Taramalar', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black)),
                 if (recentFoods.isNotEmpty)
                   TextButton(
                     onPressed: () {},
@@ -858,7 +910,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                   children: [
                       Icon(Icons.camera_alt_outlined, size: 48, color: Colors.grey.shade400),
                     const SizedBox(height: 8),
-                      Text('Henüz yemek taramadınız', style: TextStyle(color: Colors.grey.shade600)),
+                      Text('Henüz yemek taramadınız', style: TextStyle(color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600)),
                     ],
                   ),
                 ),
@@ -870,7 +922,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
                   scrollDirection: Axis.horizontal,
                   itemCount: recentFoods.length,
                   itemBuilder: (context, index) {
-                    return _buildFoodItem(context, recentFoods[index]);
+                    return _buildFoodItem(context, recentFoods[index], isDarkMode);
                   },
                 ),
               ),
@@ -880,7 +932,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildFoodItem(BuildContext context, FoodItem food) {
+  Widget _buildFoodItem(BuildContext context, FoodItem food, bool isDarkMode) {
     return Container(
       width: 110,
       margin: const EdgeInsets.only(right: 12),
@@ -890,12 +942,12 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
           SizedBox(
             height: 80,
             width: double.infinity,
-            child: _buildFoodImage(food.imageUrl),
+            child: _buildFoodImage(food.imageUrl, isDarkMode),
           ),
           const SizedBox(height: 8),
           Text(
             food.name,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: isDarkMode ? Colors.white : Colors.black),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
@@ -904,27 +956,27 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildFoodImage(String imageUrl) {
+  Widget _buildFoodImage(String imageUrl, bool isDarkMode) {
     Widget imageWidget;
     if (imageUrl.isEmpty) {
-      imageWidget = _buildFallbackIcon();
+      imageWidget = _buildFallbackIcon(isDarkMode);
     } else if (imageUrl.startsWith('data:image')) {
       try {
         final parts = imageUrl.split(',');
         if (parts.length == 2) {
           final bytes = base64Decode(parts[1]);
-          imageWidget = Image.memory(bytes, fit: BoxFit.cover, errorBuilder: (c, e, s) => _buildFallbackIcon());
+          imageWidget = Image.memory(bytes, fit: BoxFit.cover, errorBuilder: (c, e, s) => _buildFallbackIcon(isDarkMode));
         } else {
-          imageWidget = _buildFallbackIcon();
+          imageWidget = _buildFallbackIcon(isDarkMode);
         }
       } catch (e) {
-        imageWidget = _buildFallbackIcon();
+        imageWidget = _buildFallbackIcon(isDarkMode);
       }
     } else {
       imageWidget = Image.network(
         imageUrl,
         fit: BoxFit.cover,
-        errorBuilder: (c, e, s) => _buildFallbackIcon(),
+        errorBuilder: (c, e, s) => _buildFallbackIcon(isDarkMode),
         loadingBuilder: (context, child, loadingProgress) {
           if (loadingProgress == null) return child;
           return Center(child: CircularProgressIndicator(strokeWidth: 2));
@@ -938,15 +990,15 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
         height: 80,
         width: double.infinity,
         child: imageWidget,
-        color: Colors.grey.shade200,
+        color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200,
       ),
     );
   }
 
-  Widget _buildFallbackIcon() {
+  Widget _buildFallbackIcon(bool isDarkMode) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.grey.shade200,
+        color: isDarkMode ? Colors.grey.shade800 : Colors.grey.shade200,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Icon(
@@ -1019,7 +1071,7 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
               children: [
                 Text(
                     '${amount.toInt()}ml su eklendi!',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
                 ),
                 Text(
                     'Toplam: ${(_localWaterAmount * 1000).toInt()}ml',
@@ -1066,7 +1118,10 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
             children: [
               const Icon(Icons.remove_circle_outline, color: Colors.white),
               const SizedBox(width: 8),
-              Text('${amount.toInt()}ml su çıkarıldı'),
+              Text(
+                '${amount.toInt()}ml su çıkarıldı',
+                style: const TextStyle(color: Colors.white),
+              ),
             ],
           ),
           backgroundColor: Colors.orange,
@@ -1330,6 +1385,15 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
     } else {
       return '${minutes}dk';
     }
+  }
+
+  // Yemek tarayıcısına yönlendirme
+  void _navigateToFoodScanner(BuildContext context, String mealType) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => FoodScannerScreen(mealType: mealType),
+      ),
+    );
   }
 }
 

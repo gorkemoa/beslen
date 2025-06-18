@@ -20,6 +20,7 @@ class AppViewModel extends ChangeNotifier {
   Map<String, dynamic> _sleepStatistics = {};
   bool _isLoading = false;
   String? _error;
+  bool _isDarkMode = false;
 
   // Getters
   UserProfile? get userProfile => _userProfile;
@@ -31,6 +32,7 @@ class AppViewModel extends ChangeNotifier {
   Map<String, dynamic> get sleepStatistics => _sleepStatistics;
   bool get isLoading => _isLoading;
   String? get error => _error;
+  bool get isDarkMode => _isDarkMode;
   bool get hasProfile => _userProfile != null;
   FirebaseService get firebaseService => _firebaseService;
 
@@ -553,6 +555,17 @@ class AppViewModel extends ChangeNotifier {
 
   void clearError() {
     _error = null;
+    notifyListeners();
+  }
+
+  // Tema değiştirme
+  void toggleTheme() {
+    _isDarkMode = !_isDarkMode;
+    notifyListeners();
+  }
+
+  void setDarkMode(bool isDark) {
+    _isDarkMode = isDark;
     notifyListeners();
   }
 } 

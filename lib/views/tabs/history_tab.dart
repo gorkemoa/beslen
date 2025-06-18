@@ -31,7 +31,9 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
+      backgroundColor: isDarkMode ? Colors.black : Colors.grey.shade50,
       body: Column(
         children: [
           _buildHeader(context),
@@ -68,7 +70,7 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
           children: [
             Icon(
               Icons.history,
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.onPrimary,
               size: 28,
             ),
             const SizedBox(width: 12),
@@ -78,8 +80,8 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
                 children: [
                   Text(
                     'Geçmiş Arşivi',
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onPrimary,
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                     ),
@@ -87,7 +89,7 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
                   Text(
                     'Yemek ve uyku verilerinizi inceleyin',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
+                      color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.9),
                       fontSize: 14,
                     ),
                   ),
@@ -97,13 +99,13 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.2),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
                 DateFormat('d MMM', 'tr_TR').format(DateTime.now()),
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onPrimary,
                   fontWeight: FontWeight.w500,
                   fontSize: 12,
                 ),
@@ -120,10 +122,10 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
       color: Theme.of(context).colorScheme.primary,
       child: TabBar(
         controller: _tabController,
-        indicatorColor: Colors.white,
+        indicatorColor: Theme.of(context).colorScheme.onPrimary,
         indicatorWeight: 3,
-        labelColor: Colors.white,
-        unselectedLabelColor: Colors.white.withOpacity(0.7),
+        labelColor: Theme.of(context).colorScheme.onPrimary,
+        unselectedLabelColor: Theme.of(context).colorScheme.onPrimary.withOpacity(0.7),
         labelStyle: const TextStyle(
           fontWeight: FontWeight.w600,
           fontSize: 16,
@@ -225,6 +227,7 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
               'Henüz Yemek Geçmişi Yok',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
               textAlign: TextAlign.center,
             ),
@@ -232,7 +235,7 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
             Text(
               'İlk yemeğinizi tarayarak beslenme geçmişinizi oluşturmaya başlayın',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Colors.grey.shade600,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
               ),
               textAlign: TextAlign.center,
             ),
@@ -246,7 +249,7 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
               label: const Text('İlk Yemeği Tara'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Colors.white,
+                foregroundColor: Theme.of(context).colorScheme.onPrimary,
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(25),
@@ -260,6 +263,7 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
   }
 
   Widget _buildEmptyProfileState() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -269,7 +273,7 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.purple.withOpacity(0.1),
+                color: isDarkMode ? Colors.purple.withOpacity(0.2) : Colors.purple.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(80),
               ),
               child: const Icon(
@@ -283,6 +287,7 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
               'Uyku Verisi Bulunamadı',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
               textAlign: TextAlign.center,
             ),
@@ -290,7 +295,7 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
             Text(
               'Uyku takibinizi başlatmak için profil ayarlarınızı tamamlayın',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: Colors.grey.shade600,
+                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
               ),
               textAlign: TextAlign.center,
             ),
@@ -350,11 +355,11 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
     return Container(
       margin: const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Theme.of(context).colorScheme.shadow.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -398,13 +403,13 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: Colors.blue.shade500,
+                        color: Theme.of(context).colorScheme.primary,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
                         '$totalCalories kcal',
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onPrimary,
                           fontWeight: FontWeight.w600,
                           fontSize: 12,
                         ),
@@ -452,7 +457,7 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
         Text(
           label,
           style: TextStyle(
-            color: Colors.grey.shade600,
+            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
             fontSize: 12,
           ),
         ),
@@ -461,13 +466,14 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
   }
 
   Widget _buildFoodCard(BuildContext context, FoodItem food) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-             padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        color: isDarkMode ? Colors.grey[850] : Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: Theme.of(context).colorScheme.outline.withOpacity(0.1)),
       ),
       child: Row(
         children: [
@@ -480,9 +486,10 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
               children: [
                 Text(
                   food.name,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 16,
+                    color: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -491,13 +498,13 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
                     Icon(
                       Icons.access_time,
                       size: 14,
-                      color: Colors.grey.shade600,
+                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                     ),
                     const SizedBox(width: 4),
                     Text(
                       DateFormat('HH:mm').format(food.scannedAt),
                       style: TextStyle(
-                        color: Colors.grey.shade600,
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
                         fontSize: 14,
                       ),
                     ),
@@ -525,21 +532,25 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
 
   Widget _buildSleepHistoryList(BuildContext context, AppViewModel appViewModel) {
     final profile = appViewModel.userProfile!;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // Mevcut uyku durumu kartı
-        _buildCurrentSleepStatus(context, appViewModel),
-        const SizedBox(height: 16),
-        
-                 // Uyku istatistikleri
-         _buildSleepStats(context, appViewModel),
-        const SizedBox(height: 16),
-        
-                 // Uyku geçmişi
-         _buildSleepHistoryCard(context, appViewModel.sleepHistory),
-      ],
+    return Container(
+      color: isDarkMode ? Colors.black : Colors.grey.shade50,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          // Mevcut uyku durumu kartı
+          _buildCurrentSleepStatus(context, appViewModel),
+          const SizedBox(height: 16),
+          
+                   // Uyku istatistikleri
+           _buildSleepStats(context, appViewModel),
+          const SizedBox(height: 16),
+          
+                   // Uyku geçmişi
+           _buildSleepHistoryCard(context, appViewModel.sleepHistory),
+        ],
+      ),
     );
   }
 
@@ -616,6 +627,7 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
   Widget _buildSleepStats(BuildContext context, AppViewModel appViewModel) {
     final stats = appViewModel.sleepStatistics;
     final profile = appViewModel.userProfile!;
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     
     final averageDuration = stats['averageDuration'] ?? 0.0;
     final totalSleepTime = stats['totalSleepTime'] ?? 0.0;
@@ -624,11 +636,11 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDarkMode ? Colors.grey[850] : Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.black.withOpacity(0.1),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -710,6 +722,7 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
   }
 
   Widget _buildStatCard(String title, String value, Color color, IconData icon) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -731,7 +744,7 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
           Text(
             title,
             style: TextStyle(
-              color: Colors.grey.shade600,
+              color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
               fontSize: 12,
             ),
           ),
@@ -742,15 +755,16 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
 
   Widget _buildSleepHistoryCard(BuildContext context, List<SleepRecord> sleepHistory) {
     final displayHistory = sleepHistory.take(7).toList(); // Son 7 gün göster
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isDarkMode ? Colors.grey[850] : Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.black.withOpacity(0.1),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -792,7 +806,7 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
                     Text(
                       'Henüz uyku kaydı yok',
                       style: TextStyle(
-                        color: Colors.grey.shade600,
+                        color: isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600,
                         fontSize: 16,
                       ),
                     ),
@@ -801,13 +815,13 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
               ),
             )
           else
-            ...displayHistory.map((sleep) => _buildSleepHistoryItemFromRecord(sleep)).toList(),
+            ...displayHistory.map((sleep) => _buildSleepHistoryItemFromRecord(context, sleep)).toList(),
         ],
       ),
     );
   }
 
-  Widget _buildSleepHistoryItemFromRecord(SleepRecord sleep) {
+  Widget _buildSleepHistoryItemFromRecord(BuildContext context, SleepRecord sleep) {
     final date = sleep.sleepTime;
     final duration = sleep.duration ?? 0.0;
     final bedTime = DateFormat('HH:mm').format(sleep.sleepTime);
@@ -827,13 +841,14 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
       dateTitle = DateFormat('d MMM', 'tr_TR').format(date);
     }
 
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        color: isDarkMode ? Colors.grey[800] : Colors.grey.shade50,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: isDarkMode ? Colors.grey[700]! : Colors.grey.shade200),
       ),
       child: Row(
         children: [
@@ -879,7 +894,7 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
                 Text(
                   '$bedTime - $wakeTime',
                   style: TextStyle(
-                    color: Colors.grey.shade600,
+                    color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
                     fontSize: 14,
                   ),
                 ),
@@ -909,8 +924,6 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
       ),
     );
   }
-
-
 
   String _getSleepQuality(double hours) {
     if (hours < 6) return 'Az';
@@ -999,11 +1012,12 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
           },
           loadingBuilder: (context, child, loadingProgress) {
             if (loadingProgress == null) return child;
+            final isDarkMode = Theme.of(context).brightness == Brightness.dark;
             return Container(
               width: 60,
               height: 60,
               decoration: BoxDecoration(
-                color: Colors.grey.shade100,
+                color: isDarkMode ? Colors.grey[800] : Colors.grey.shade100,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
@@ -1023,13 +1037,14 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
   }
 
   Widget _buildFallbackIcon() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: 60,
       height: 60,
       decoration: BoxDecoration(
-        color: Colors.grey.shade100,
+        color: isDarkMode ? Colors.grey[850] : Colors.grey.shade100,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
+        border: Border.all(color: isDarkMode ? Colors.grey[700]! : Colors.grey.shade300),
       ),
       child: Icon(
         Icons.restaurant,
