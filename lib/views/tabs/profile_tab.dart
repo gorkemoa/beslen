@@ -33,6 +33,8 @@ class ProfileTab extends StatelessWidget {
                 _buildStatsCard(context, profile),
                 const SizedBox(height: 16),
                 _buildInfoCard(context, profile),
+                const SizedBox(height: 16),
+                _buildSignOutCard(context),
               ],
             ),
           );
