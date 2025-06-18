@@ -8,7 +8,6 @@ class FoodItem {
   final double fat;
   final DateTime scannedAt;
   final String userId;
-  final String? mealType; // Kahvaltı, Öğle, Akşam, Atıştırma
 
   FoodItem({
     required this.id,
@@ -20,7 +19,6 @@ class FoodItem {
     required this.fat,
     required this.scannedAt,
     required this.userId,
-    this.mealType,
   });
 
   Map<String, dynamic> toMap() {
@@ -34,7 +32,6 @@ class FoodItem {
       'fat': fat,
       'scannedAt': scannedAt.millisecondsSinceEpoch,
       'userId': userId,
-      'mealType': mealType,
     };
   }
 
@@ -49,7 +46,6 @@ class FoodItem {
       fat: map['fat']?.toDouble() ?? 0.0,
       scannedAt: DateTime.fromMillisecondsSinceEpoch(map['scannedAt'] ?? 0),
       userId: map['userId'] ?? '',
-      mealType: map['mealType'],
     );
   }
 } 

@@ -5,7 +5,6 @@ import 'dart:convert';
 import 'dart:math';
 import '../../viewmodel/app_viewmodel.dart';
 import '../../models/food_item.dart';
-import '../food_scanner_screen.dart';
 
 class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
@@ -836,45 +835,16 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
   }
 
   Widget _buildMealItem(BuildContext context, IconData icon, String name, Color bgColor, Color iconColor, bool isDarkMode) {
-    return GestureDetector(
-      onTap: () => _navigateToFoodScanner(context, name),
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          color: Colors.transparent,
+    return Column(
+      children: [
+        CircleAvatar(
+          radius: 30,
+          backgroundColor: bgColor,
+          child: Icon(icon, size: 30, color: iconColor),
         ),
-        child: Column(
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: iconColor.withOpacity(0.2),
-                    blurRadius: 8,
-                    spreadRadius: 1,
-                  ),
-                ],
-              ),
-              child: CircleAvatar(
-                radius: 30,
-                backgroundColor: bgColor,
-                child: Icon(icon, size: 30, color: iconColor),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              name, 
-              style: TextStyle(
-                fontSize: 13, 
-                fontWeight: FontWeight.w500, 
-                color: isDarkMode ? Colors.white70 : Colors.black,
-              ),
-            ),
-          ],
-        ),
-      ),
+        const SizedBox(height: 8),
+        Text(name, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: isDarkMode ? Colors.white70 : Colors.black)),
+      ],
     );
   }
 
@@ -1385,15 +1355,6 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
     } else {
       return '${minutes}dk';
     }
-  }
-
-  // Yemek tarayıcısına yönlendirme
-  void _navigateToFoodScanner(BuildContext context, String mealType) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => FoodScannerScreen(mealType: mealType),
-      ),
-    );
   }
 }
 

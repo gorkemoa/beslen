@@ -8,9 +8,7 @@ import '../service/firebase_service.dart';
 import '../models/food_item.dart';
 
 class FoodScannerScreen extends StatefulWidget {
-  final String? mealType;
-  
-  const FoodScannerScreen({super.key, this.mealType});
+  const FoodScannerScreen({super.key});
 
   @override
   State<FoodScannerScreen> createState() => _FoodScannerScreenState();
@@ -156,7 +154,7 @@ class _FoodScannerScreenState extends State<FoodScannerScreen> {
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text(widget.mealType != null ? '${widget.mealType} - Yemek Tara' : 'Yemek Tara'),
+        title: const Text('Yemek Tara'),
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: Theme.of(context).colorScheme.primary,
