@@ -317,6 +317,91 @@ class AppViewModel extends ChangeNotifier {
     return (todaysCalories / _userProfile!.dailyCalorieNeeds).clamp(0.0, 1.0);
   }
 
+  // Su tüketimi fonksiyonları
+  
+  // Bugünün su tüketimini yükleme
+  Future<void> loadTodaysWaterIntake() async {
+    final user = _firebaseService.currentUser;
+    if (user != null) {
+      _todaysWaterIntake = await _firebaseService.getTodaysWaterIntake(user.uid);
+      notifyListeners();
+    }
+  }
+
+  // Su tüketimi geçmişini yükleme
+  Future<void> loadWaterHistory() async {
+    final user = _firebaseService.currentUser;
+    if (user != null) {
+      _waterHistory = await _firebaseService.getUserWaterHistory(user.uid);
+      notifyListeners();
+    }
+  }
+
+  // Su tüketimi ekleme
+  Future<bool> addWaterIntake(double amountMl, {String? note}) async {
+    final user = _firebaseService.currentUser;
+    if (user == null) return false;
+
+    final waterIntake = WaterIntake(
+      id: '${user.uid}_${DateTime.now().millisecondsSinceEpoch}',
+      userId: user.uid,
+      amount: amountMl,
+      timestamp: DateTime.now(),
+      note: note,
+    );
+
+    _setLoading(true);
+    try {
+      final success = await _firebaseService.saveWaterIntake(waterIntake);
+      if (success) {
+        _todaysWaterIntake.insert(0, waterIntake);
+        _waterHistory.insert(0, waterIntake);
+        notifyListeners();
+      }
+      return success;
+    } catch (e) {
+      _setError('Su tüketimi eklenirken hata oluştu: $e');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Su tüketimi silme
+  Future<bool> removeWaterIntake(String waterIntakeId) async {
+    _setLoading(true);
+    try {
+      final success = await _firebaseService.deleteWaterIntake(waterIntakeId);
+      if (success) {
+        _todaysWaterIntake.removeWhere((w) => w.id == waterIntakeId);
+        _waterHistory.removeWhere((w) => w.id == waterIntakeId);
+        notifyListeners();
+      }
+      return success;
+    } catch (e) {
+      _setError('Su tüketimi silinirken hata oluştu: $e');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Bugünün toplam su tüketimi (litre)
+  double get todaysWaterAmount {
+    return _todaysWaterIntake.fold(0.0, (sum, water) => sum + water.amount) / 1000;
+  }
+
+  // Su hedefine göre yüzde
+  double get waterPercentage {
+    if (_userProfile == null) return 0.0;
+    return (todaysWaterAmount / _userProfile!.dailyWaterTarget).clamp(0.0, 1.0);
+  }
+
+  // Su hedefi (litre)
+  double get waterTarget {
+    return _userProfile?.dailyWaterTarget ?? 2.5;
+  }
+
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();
