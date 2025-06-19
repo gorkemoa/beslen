@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/food_item.dart';
 import '../models/user_profile.dart';
@@ -14,6 +15,10 @@ class DashboardViewModel extends ChangeNotifier {
   UserProfile? _userProfile;
   List<FoodItem> _todaysFoods = [];
   DailySummary? _todaySummary;
+
+  // Stream subscriptions for cleanup
+  StreamSubscription<UserProfile?>? _userProfileSubscription;
+  StreamSubscription<List<FoodItem>>? _foodItemsSubscription;
 
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -63,7 +68,8 @@ class DashboardViewModel extends ChangeNotifier {
   }
 
   void _setupUserProfileStream() {
-    _firebaseService.getUserProfileStream(_firebaseService.userId).listen(
+    _userProfileSubscription?.cancel();
+    _userProfileSubscription = _firebaseService.getUserProfileStream(_firebaseService.userId).listen(
       (profile) {
         _userProfile = profile;
         notifyListeners();
@@ -87,7 +93,8 @@ class DashboardViewModel extends ChangeNotifier {
   }
 
   void _setupFoodItemsStream() {
-    _firebaseService.getTodaysFoodItemsStream(_firebaseService.userId).listen(
+    _foodItemsSubscription?.cancel();
+    _foodItemsSubscription = _firebaseService.getTodaysFoodItemsStream(_firebaseService.userId).listen(
       (foods) {
         _todaysFoods = foods;
         generateDailySummary();
@@ -188,5 +195,12 @@ class DashboardViewModel extends ChangeNotifier {
 
   void refreshData() {
     initialize();
+  }
+
+  @override
+  void dispose() {
+    _userProfileSubscription?.cancel();
+    _foodItemsSubscription?.cancel();
+    super.dispose();
   }
 } 
