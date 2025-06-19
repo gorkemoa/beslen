@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
-import '../viewmodel/app_viewmodel.dart';
-import 'profile_setup_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../service/firebase_service.dart';
 import 'home_screen.dart';
-import 'login_screen.dart';
+import 'auth/login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -13,138 +11,162 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends State<SplashScreen> 
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<double> _scaleAnimation;
+
   @override
   void initState() {
     super.initState();
-    _initializeApp();
+    _setupAnimations();
+    _checkAuthState();
   }
 
-  Future<void> _initializeApp() async {
-    final appViewModel = Provider.of<AppViewModel>(context, listen: false);
+  void _setupAnimations() {
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 2000),
+      vsync: this,
+    );
+
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+    ));
+
+    _scaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _animationController,
+      curve: const Interval(0.2, 0.8, curve: Curves.elasticOut),
+    ));
+
+    _animationController.forward();
+  }
+
+  Future<void> _checkAuthState() async {
+    // Splash animasyonunun tamamlanması için bekle
+    await Future.delayed(const Duration(milliseconds: 2500));
+
+    if (!mounted) return;
+
+    // Firebase auth durumunu kontrol et
+    final firebaseService = FirebaseService();
     
-    // 2 saniye bekle (splash screen efekti için)
-    await Future.delayed(const Duration(seconds: 2));
-    
-    try {
-      // Mevcut kullanıcıyı kontrol et
-      if (appViewModel.firebaseService.currentUser != null) {
-        // Kullanıcı zaten giriş yapmış, profil yükle
-        await appViewModel.loadUserProfile();
-        
-        if (mounted) {
-          if (appViewModel.hasProfile) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => const HomeScreen()),
-            );
-          } else {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => const ProfileSetupScreen()),
-            );
-          }
-        }
-      } else {
-        // Kullanıcı giriş yapmamış, login sayfasına yönlendir
-        if (mounted) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const LoginScreen()),
-          );
-        }
-      }
-    } catch (e) {
-      print('Initialization error: $e');
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-        );
-      }
+    if (firebaseService.isLoggedIn) {
+      // Kullanıcı giriş yapmış, ana ekrana git
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    } else {
+      // Kullanıcı giriş yapmamış, giriş ekranına git
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+      );
     }
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
             colors: [
-              Theme.of(context).colorScheme.primary,
-              Theme.of(context).colorScheme.primary.withOpacity(0.8),
+              Color(0xFF2E7D32), // Koyu yeşil
+              Color(0xFF4CAF50), // Açık yeşil
             ],
           ),
         ),
         child: Center(
-          child: AnimationLimiter(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: AnimationConfiguration.toStaggeredList(
-                duration: const Duration(milliseconds: 600),
-                childAnimationBuilder: (widget) => SlideAnimation(
-                  verticalOffset: 50.0,
-                  child: FadeInAnimation(
-                    child: widget,
+          child: AnimatedBuilder(
+            animation: _animationController,
+            builder: (context, child) {
+              return FadeTransition(
+                opacity: _fadeAnimation,
+                child: ScaleTransition(
+                  scale: _scaleAnimation,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Logo/Icon
+                      Container(
+                        width: 120,
+                        height: 120,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(30),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 20,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.restaurant_menu,
+                          size: 60,
+                          color: Color(0xFF2E7D32),
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 30),
+                      
+                      // App Name
+                      const Text(
+                        'Beslen',
+                        style: TextStyle(
+                          fontSize: 36,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 10),
+                      
+                      // Tagline
+                      Text(
+                        'Sağlıklı Beslenme Takibi',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white.withOpacity(0.9),
+                          fontWeight: FontWeight.w300,
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 60),
+                      
+                      // Loading indicator
+                      SizedBox(
+                        width: 30,
+                        height: 30,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white.withOpacity(0.7),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                children: [
-                  // App Logo
-                  Container(
-                    width: 120,
-                    height: 120,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface,
-                      borderRadius: BorderRadius.circular(30),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      Icons.restaurant_menu,
-                      size: 60,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  
-                  // App Title
-                  Text(
-                    'beslen',
-                    style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                      color: Theme.of(context).colorScheme.onPrimary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 32,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  
-                  // Subtitle
-                  Text(
-                    'Sağlıklı beslenmenin akıllı yolu',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      color: Theme.of(context).colorScheme.onPrimary.withOpacity(0.8),
-                    ),
-                  ),
-                  const SizedBox(height: 48),
-                  
-                  // Loading indicator
-                  SizedBox(
-                    width: 40,
-                    height: 40,
-                    child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Theme.of(context).colorScheme.onPrimary.withOpacity(0.8),
-                      ),
-                      strokeWidth: 3,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+              );
+            },
           ),
         ),
       ),

@@ -1,5 +1,5 @@
 name: beslen
-description: "A new Flutter project."
+description: "Minimal beslenme takip uygulaması"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -39,33 +39,20 @@ dependencies:
   firebase_core: ^3.8.0  
   firebase_auth: ^5.3.3
   cloud_firestore: ^5.5.0
+  firebase_storage: ^12.3.4
   
-  # Camera & Image
-  camera: ^0.11.0+2
+  # AI
+  google_generative_ai: ^0.4.6
+  
+  # Image & Camera
   image_picker: ^1.1.2
-  image: ^4.2.0
-  flutter_image_compress: ^2.3.0
+  permission_handler: ^11.3.1
   
   # State Management
   provider: ^6.1.2
   
-  # HTTP & JSON
-  http: ^1.2.2
-  
-  # AI & Machine Learning
-  google_generative_ai: ^0.4.6
-  
-  # Authentication
-  google_sign_in: ^6.2.1
-  sign_in_with_apple: ^6.1.1
-  crypto: ^3.0.3
-  
-  # UI Components
+  # UI
   google_fonts: ^6.2.1
-  flutter_staggered_animations: ^1.1.1
-  
-  # Date & Time
-  intl: ^0.19.0
 
 dev_dependencies:
   flutter_test:
