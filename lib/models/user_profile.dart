@@ -14,6 +14,7 @@ class UserProfile {
   final DateTime? lastWakeUpTime; // Son uyanma zamanı
   final DateTime? lastResetDate; // Son sıfırlama tarihi
   final double? lastSleepDuration; // Son uyku süresi (saat)
+  final Map<String, DateTime>? todaysMeals; // Bugünün öğünleri ve zamanları
 
   UserProfile({
     required this.id,
@@ -29,6 +30,7 @@ class UserProfile {
     this.lastWakeUpTime,
     this.lastResetDate,
     this.lastSleepDuration,
+    this.todaysMeals,
   });
 
 
@@ -58,6 +60,13 @@ class UserProfile {
   }
 
   Map<String, dynamic> toMap() {
+    Map<String, dynamic> mealsMap = {};
+    if (todaysMeals != null) {
+      todaysMeals!.forEach((mealType, dateTime) {
+        mealsMap[mealType] = Timestamp.fromDate(dateTime);
+      });
+    }
+
     return {
       'name': name,
       'age': age,
@@ -78,10 +87,21 @@ class UserProfile {
           ? Timestamp.fromDate(lastResetDate!)
           : null,
       'lastSleepDuration': lastSleepDuration,
+      'todaysMeals': mealsMap,
     };
   }
 
   factory UserProfile.fromMap(Map<String, dynamic> map, String id) {
+    Map<String, DateTime>? mealsMap;
+    if (map['todaysMeals'] != null) {
+      mealsMap = {};
+      (map['todaysMeals'] as Map<String, dynamic>).forEach((mealType, timestamp) {
+        if (timestamp is Timestamp) {
+          mealsMap![mealType] = timestamp.toDate();
+        }
+      });
+    }
+
     return UserProfile(
       id: id,
       name: map['name'] ?? '',
@@ -102,6 +122,7 @@ class UserProfile {
           ? (map['lastResetDate'] as Timestamp).toDate()
           : null,
       lastSleepDuration: map['lastSleepDuration']?.toDouble(),
+      todaysMeals: mealsMap,
     );
   }
 
@@ -118,6 +139,7 @@ class UserProfile {
     DateTime? lastWakeUpTime,
     DateTime? lastResetDate,
     double? lastSleepDuration,
+    Map<String, DateTime>? todaysMeals,
   }) {
     return UserProfile(
       id: id,
@@ -133,6 +155,7 @@ class UserProfile {
       lastWakeUpTime: lastWakeUpTime ?? this.lastWakeUpTime,
       lastResetDate: lastResetDate ?? this.lastResetDate,
       lastSleepDuration: lastSleepDuration ?? this.lastSleepDuration,
+      todaysMeals: todaysMeals ?? this.todaysMeals,
     );
   }
 } 

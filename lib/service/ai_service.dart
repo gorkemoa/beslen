@@ -89,52 +89,7 @@ Sadece JSON yanıtı ver, başka açıklama yapma. Türk mutfağını dikkate al
     Map<String, dynamic>? userProfile,
   ) async {
     try {
-      final prompt = '''
-Kullanıcının beslenme geçmişini ve hedeflerini analiz ederek kişiselleştirilmiş öneriler üret:
-
-Son yemekler: ${recentFoods.map((f) => '${f.name}: ${f.calories} kcal').join(', ')}
-Hedef kalori: $targetCalories
-Kullanıcı profili: ${userProfile?.toString() ?? 'Bilinmiyor'}
-
-Aşağıdaki JSON formatında 5 akıllı öneri ver:
-
-{
-  "recommendations": [
-    {
-      "name": "Yemek adı",
-      "calories": Kalori,
-      "protein": Protein gram,
-      "carbs": Karbonhidrat gram,
-      "fat": Yağ gram,
-      "reason": "Neden öneriliyor (detaylı açıklama)",
-      "type": "main/snack/drink",
-      "priority": "high/medium/low",
-      "preparation_time": "Hazırlama süresi",
-      "difficulty": "kolay/orta/zor",
-      "health_benefits": ["Fayda1", "Fayda2"],
-      "recipe_tips": "Kısa tarif ipucu"
-    }
-  ],
-  "daily_analysis": "Günlük beslenme analizi ve öneriler",
-  "missing_nutrients": ["Eksik besin öğeleri"],
-  "next_meal_suggestion": "Sonraki öğün önerisi"
-}
-
-Türk mutfağını ve sağlıklı beslenme prensiplerini dikkate al.
-''';
-
-      final response = await _model.generateContent([Content.text(prompt)]);
-      
-      if (response.text != null) {
-        final cleanJson = response.text!
-            .replaceAll('```json', '')
-            .replaceAll('```', '')
-            .trim();
-        
-        final result = jsonDecode(cleanJson);
-        return List<Map<String, dynamic>>.from(result['recommendations'] ?? []);
-      }
-      
+      // Basit öneriler için fallback kullan
       return _getFallbackRecommendations(recentFoods, targetCalories);
     } catch (e) {
       print('Gemini AI öneri hatası: $e');
@@ -148,47 +103,64 @@ Türk mutfağını ve sağlıklı beslenme prensiplerini dikkate al.
   ) async {
     try {
       final prompt = '''
-Günlük beslenme verilerini analiz et ve detaylı rapor hazırla:
+Günlük beslenme verilerini analiz et ve SADECE geçerli JSON formatında yanıt ver:
 
 Bugünkü yemekler: ${todaysFoods.map((f) => '${f.name}: ${f.calories} kcal, P:${f.protein}g, C:${f.carbs}g, F:${f.fat}g').join(' | ')}
-Kullanıcı profili: ${userProfile?.toString() ?? 'Bilinmiyor'}
 
-Aşağıdaki JSON formatında analiz ver:
+SADECE bu JSON formatını kullan, başka hiçbir metin ekleme:
 
 {
-  "total_calories": Toplam kalori,
-  "total_protein": Toplam protein,
-  "total_carbs": Toplam karbonhidrat,
-  "total_fat": Toplam yağ,
-  "nutrition_score": Beslenme skoru (0-100),
-  "balance_analysis": "Beslenme dengesi analizi",
+  "total_calories": ${todaysFoods.fold(0, (sum, f) => sum + f.calories)},
+  "total_protein": ${todaysFoods.fold(0.0, (sum, f) => sum + f.protein)},
+  "total_carbs": ${todaysFoods.fold(0.0, (sum, f) => sum + f.carbs)},
+  "total_fat": ${todaysFoods.fold(0.0, (sum, f) => sum + f.fat)},
+  "nutrition_score": 75,
+  "balance_analysis": "Günlük beslenme analizi",
   "macro_percentages": {
-    "protein": Protein yüzdesi,
-    "carbs": Karbonhidrat yüzdesi,
-    "fat": Yağ yüzdesi
+    "protein": 20,
+    "carbs": 50,
+    "fat": 30
   },
   "recommendations": [
-    "Öneri 1",
-    "Öneri 2",
-    "Öneri 3"
+    "Su tüketimini artırın",
+    "Sebze oranını artırın",
+    "Düzenli öğün saatlerine dikkat edin"
   ],
-  "warnings": ["Uyarı 1", "Uyarı 2"] veya null,
-  "achievements": ["Başarı 1", "Başarı 2"],
-  "tomorrow_focus": "Yarın odaklanılacak beslenme alanı"
+  "warnings": null,
+  "achievements": ["Beslenme takibine devam ediyorsunuz"],
+  "tomorrow_focus": "Protein dengesi"
 }
-
-Sağlık uzmanı perspektifinden yaklaş ve Türkçe yanıtla.
 ''';
 
       final response = await _model.generateContent([Content.text(prompt)]);
       
       if (response.text != null) {
-        final cleanJson = response.text!
-            .replaceAll('```json', '')
-            .replaceAll('```', '')
-            .trim();
+        String cleanText = response.text!.trim();
         
-        return jsonDecode(cleanJson);
+        // Markdown temizleme
+        cleanText = cleanText.replaceAll('```json', '');
+        cleanText = cleanText.replaceAll('```', '');
+        cleanText = cleanText.replaceAll('**Açıklamalar:**', '');
+        cleanText = cleanText.replaceAll('**', '');
+        
+        // Sadece JSON kısmını al
+        final jsonStart = cleanText.indexOf('{');
+        final jsonEnd = cleanText.lastIndexOf('}');
+        
+        if (jsonStart != -1 && jsonEnd != -1 && jsonEnd > jsonStart) {
+          cleanText = cleanText.substring(jsonStart, jsonEnd + 1);
+        }
+        
+        // JSON parse et
+        try {
+          final result = jsonDecode(cleanText);
+          if (result is Map<String, dynamic>) {
+            return result;
+          }
+        } catch (jsonError) {
+          print('JSON parse hatası: $jsonError');
+          print('Temizlenmiş text: $cleanText');
+        }
       }
       
       return _getFallbackNutritionAnalysis(todaysFoods);
@@ -223,53 +195,70 @@ Sağlık uzmanı perspektifinden yaklaş ve Türkçe yanıtla.
     double consumedCalories = recentFoods.fold(0.0, (sum, food) => sum + food.calories);
     double remainingCalories = targetCalories - consumedCalories;
     
-    if (remainingCalories > 300) {
+    if (remainingCalories > 400) {
       return [
         {
-          'name': 'Izgara Tavuk Salata',
-          'calories': 280,
-          'protein': 35.0,
-          'carbs': 12.0,
-          'fat': 8.0,
-          'reason': 'Yüksek protein, düşük kalori içeriği ile ideal bir seçenek',
-          'type': 'main',
-          'priority': 'high'
+          'title': 'Izgara Tavuk Salata',
+          'description': 'Yüksek protein, düşük kalori içeriği ile ideal ana öğün seçenek',
+          'type': 'nutrition',
+          'importance': 'high'
         },
         {
-          'name': 'Avokado Toast',
-          'calories': 320,
-          'protein': 12.0,
-          'carbs': 28.0,
-          'fat': 18.0,
-          'reason': 'Sağlıklı yağlar ve kompleks karbonhidrat kaynağı',
-          'type': 'main', 
-          'priority': 'medium'
+          'title': 'Sebze Çorbası',
+          'description': 'Vitamin ve mineral açısından zengin, doyurucu bir seçenek',
+          'type': 'nutrition',
+          'importance': 'medium'
+        },
+        {
+          'title': 'Su İçmeyi Unutmayın',
+          'description': 'Günde en az 8 bardak su için',
+          'type': 'hydration',
+          'importance': 'high'
         }
       ];
-    } else if (remainingCalories > 100) {
+    } else if (remainingCalories > 150) {
       return [
         {
-          'name': 'Yoğurt ve Meyve',
-          'calories': 120,
-          'protein': 8.0,
-          'carbs': 18.0,
-          'fat': 2.0,
-          'reason': 'Probiyotik ve doğal şeker kaynağı',
-          'type': 'snack',
-          'priority': 'high'
+          'title': 'Yoğurt ve Meyve',
+          'description': 'Probiyotik ve doğal şeker kaynağı olan hafif atıştırmalık',
+          'type': 'nutrition',
+          'importance': 'medium'
+        },
+        {
+          'title': 'Badem veya Ceviz',
+          'description': 'Sağlıklı yağlar ve protein için ideal',
+          'type': 'nutrition',
+          'importance': 'medium'
+        }
+      ];
+    } else if (remainingCalories > 0) {
+      return [
+        {
+          'title': 'Yeşil Çay',
+          'description': 'Antioksidan kaynağı, metabolizmayı destekler',
+          'type': 'hydration',
+          'importance': 'low'
+        },
+        {
+          'title': 'Meyve Suyu (Taze)',
+          'description': 'Vitamin C ve doğal şeker kaynağı',
+          'type': 'hydration',
+          'importance': 'low'
         }
       ];
     } else {
       return [
         {
-          'name': 'Yeşil Çay',
-          'calories': 2,
-          'protein': 0.0,
-          'carbs': 0.0,
-          'fat': 0.0,
-          'reason': 'Antioksidan kaynağı, metabolizmayı hızlandırır',
-          'type': 'drink',
-          'priority': 'medium'
+          'title': 'Kalori Hedefine Ulaştınız',
+          'description': 'Bugünlük yeterli kalori aldınız. Su içmeye devam edin.',
+          'type': 'general',
+          'importance': 'medium'
+        },
+        {
+          'title': 'Hafif Yürüyüş',
+          'description': 'Sindirim için 10-15 dakika hafif yürüyüş yapabilirsiniz',
+          'type': 'exercise',
+          'importance': 'low'
         }
       ];
     }
@@ -281,26 +270,65 @@ Sağlık uzmanı perspektifinden yaklaş ve Türkçe yanıtla.
     double totalCarbs = todaysFoods.fold(0.0, (sum, food) => sum + food.carbs);
     double totalFat = todaysFoods.fold(0.0, (sum, food) => sum + food.fat);
 
+    // Beslenme skoru hesaplama
+    int nutritionScore = 50;
+    if (totalCalories > 1500 && totalCalories < 2500) nutritionScore += 20;
+    if (totalProtein > 50) nutritionScore += 15;
+    if (totalCarbs > 100) nutritionScore += 10;
+    if (totalFat > 30) nutritionScore += 5;
+    
+    // Makro yüzdeleri hesaplama
+    double proteinPercent = totalCalories > 0 ? (totalProtein * 4 / totalCalories * 100) : 0;
+    double carbsPercent = totalCalories > 0 ? (totalCarbs * 4 / totalCalories * 100) : 0;
+    double fatPercent = totalCalories > 0 ? (totalFat * 9 / totalCalories * 100) : 0;
+
+    // Dinamik öneriler
+    List<String> recommendations = [];
+    if (totalCalories < 1200) {
+      recommendations.add('Kalori alımınızı artırmalısınız');
+    }
+    if (proteinPercent < 15) {
+      recommendations.add('Protein tüketimini artırın');
+    }
+    if (carbsPercent > 60) {
+      recommendations.add('Karbonhidrat oranını azaltın');
+    }
+    recommendations.addAll([
+      'Günde en az 8 bardak su için',
+      'Sebze ve meyve tüketimini artırın',
+      'Düzenli öğün saatlerine dikkat edin'
+    ]);
+
+    // Başarılar
+    List<String> achievements = [];
+    if (todaysFoods.isNotEmpty) {
+      achievements.add('Beslenme takibine devam ediyorsunuz!');
+    }
+    if (totalCalories > 1000) {
+      achievements.add('Günlük kalori hedefine yaklaşıyorsunuz');
+    }
+    if (proteinPercent >= 15) {
+      achievements.add('Protein dengeniz iyi');
+    }
+
     return {
-      'total_calories': totalCalories,
-      'total_protein': totalProtein,
-      'total_carbs': totalCarbs,
-      'total_fat': totalFat,
-      'nutrition_score': 60,
-      'balance_analysis': 'Günlük beslenme verileriniz analiz ediliyor.',
+      'total_calories': totalCalories.round(),
+      'total_protein': totalProtein.round(),
+      'total_carbs': totalCarbs.round(),
+      'total_fat': totalFat.round(),
+      'nutrition_score': nutritionScore.clamp(0, 100),
+      'balance_analysis': todaysFoods.isEmpty 
+          ? 'Henüz yemek kaydı yok. İlk yemeğinizi ekleyerek başlayın!'
+          : 'Günlük beslenme dengeniz değerlendiriliyor. Protein: %${proteinPercent.toInt()}, Karbonhidrat: %${carbsPercent.toInt()}, Yağ: %${fatPercent.toInt()}',
       'macro_percentages': {
-        'protein': totalCalories > 0 ? (totalProtein * 4 / totalCalories * 100) : 0,
-        'carbs': totalCalories > 0 ? (totalCarbs * 4 / totalCalories * 100) : 0,
-        'fat': totalCalories > 0 ? (totalFat * 9 / totalCalories * 100) : 0,
+        'protein': proteinPercent.round(),
+        'carbs': carbsPercent.round(),
+        'fat': fatPercent.round(),
       },
-      'recommendations': [
-        'Günde en az 8 bardak su için',
-        'Sebze ve meyve tüketimini artırın',
-        'Düzenli öğün saatlerine dikkat edin'
-      ],
-      'warnings': null,
-      'achievements': ['Beslenme takibine devam ediyorsunuz!'],
-      'tomorrow_focus': 'Protein dengesi'
+      'recommendations': recommendations,
+      'warnings': totalCalories > 3000 ? ['Günlük kalori alımınız yüksek'] : null,
+      'achievements': achievements,
+      'tomorrow_focus': proteinPercent < 15 ? 'Protein dengesi' : 'Sebze ve meyve tüketimi'
     };
   }
 } 

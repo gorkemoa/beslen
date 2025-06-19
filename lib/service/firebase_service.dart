@@ -650,7 +650,15 @@ class FirebaseService {
         await doc.reference.delete();
       }
 
-      print('Günlük veriler sıfırlandı: ${foodQuery.docs.length} yemek, ${waterQuery.docs.length} su kaydı silindi');
+      // Kullanıcı profilindeki günlük öğün verilerini sıfırla
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .update({
+        'todaysMeals': {},
+      });
+
+      print('Günlük veriler sıfırlandı: ${foodQuery.docs.length} yemek, ${waterQuery.docs.length} su kaydı silindi, öğünler sıfırlandı');
       return true;
     } catch (e) {
       print('Günlük veri sıfırlama hatası: $e');

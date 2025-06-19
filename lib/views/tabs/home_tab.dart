@@ -808,43 +808,110 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
   }
 
   Widget _buildMealsCard(BuildContext context, bool isDarkMode) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      color: isDarkMode ? Colors.grey.shade900 : Colors.grey.shade100,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Öğünler', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black)),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
+    return Consumer<AppViewModel>(
+      builder: (context, appViewModel, child) {
+        return Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          color: isDarkMode ? Colors.grey.shade900 : Colors.grey.shade100,
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildMealItem(context, Icons.local_cafe_outlined, 'Kahvaltı', isDarkMode ? Colors.orange.withOpacity(0.1) : const Color(0xFFFFF8E1), Colors.orange, isDarkMode),
-                _buildMealItem(context, Icons.restaurant_outlined, 'Öğle', isDarkMode ? Colors.green.withOpacity(0.1) : const Color(0xFFE8F5E9), Colors.green, isDarkMode),
-                _buildMealItem(context, Icons.nightlight_outlined, 'Akşam', isDarkMode ? Colors.blue.withOpacity(0.1) : const Color(0xFFE3F2FD), Colors.blue, isDarkMode),
-                _buildMealItem(context, Icons.apple_outlined, 'Atıştırma', isDarkMode ? Colors.red.withOpacity(0.1) : const Color(0xFFFCE4EC), Colors.red, isDarkMode),
+                Text('Öğünler', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDarkMode ? Colors.white : Colors.black)),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildMealItem(context, appViewModel, Icons.local_cafe_outlined, 'Kahvaltı', 'breakfast', isDarkMode ? Colors.orange.withOpacity(0.1) : const Color(0xFFFFF8E1), Colors.orange, isDarkMode),
+                    _buildMealItem(context, appViewModel, Icons.restaurant_outlined, 'Öğle', 'lunch', isDarkMode ? Colors.green.withOpacity(0.1) : const Color(0xFFE8F5E9), Colors.green, isDarkMode),
+                    _buildMealItem(context, appViewModel, Icons.nightlight_outlined, 'Akşam', 'dinner', isDarkMode ? Colors.blue.withOpacity(0.1) : const Color(0xFFE3F2FD), Colors.blue, isDarkMode),
+                    _buildMealItem(context, appViewModel, Icons.apple_outlined, 'Atıştırma', 'snack', isDarkMode ? Colors.red.withOpacity(0.1) : const Color(0xFFFCE4EC), Colors.red, isDarkMode),
+                  ],
+                ),
               ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildMealItem(BuildContext context, IconData icon, String name, Color bgColor, Color iconColor, bool isDarkMode) {
-    return Column(
-      children: [
-        CircleAvatar(
-          radius: 30,
-          backgroundColor: bgColor,
-          child: Icon(icon, size: 30, color: iconColor),
-        ),
-        const SizedBox(height: 8),
-        Text(name, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: isDarkMode ? Colors.white70 : Colors.black)),
-      ],
+  Widget _buildMealItem(BuildContext context, AppViewModel appViewModel, IconData icon, String name, String mealType, Color bgColor, Color iconColor, bool isDarkMode) {
+    final isCompleted = appViewModel.isMealCompleted(mealType);
+    final mealTime = appViewModel.getMealTime(mealType);
+    
+    return GestureDetector(
+      onTap: () => _handleMealTap(context, appViewModel, mealType, name, isCompleted),
+      child: AnimatedBuilder(
+        animation: _pulseAnimation,
+        builder: (context, child) {
+          return Transform.scale(
+            scale: isCompleted ? 1.0 + _pulseAnimation.value * 0.05 : 1.0,
+            child: Column(
+              children: [
+                Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 30,
+                      backgroundColor: isCompleted ? iconColor.withOpacity(0.2) : bgColor,
+                      child: Icon(
+                        icon, 
+                        size: 30, 
+                        color: isCompleted ? iconColor : iconColor.withOpacity(0.7),
+                      ),
+                    ),
+                    if (isCompleted)
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: iconColor,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: iconColor.withOpacity(0.3),
+                                blurRadius: 6,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.check,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                          padding: const EdgeInsets.all(2),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  name, 
+                  style: TextStyle(
+                    fontSize: 13, 
+                    fontWeight: isCompleted ? FontWeight.bold : FontWeight.w500, 
+                    color: isCompleted 
+                        ? (isDarkMode ? Colors.white : Colors.black)
+                        : (isDarkMode ? Colors.white70 : Colors.black),
+                  ),
+                ),
+                if (isCompleted && mealTime != null)
+                  Text(
+                    '${mealTime.hour.toString().padLeft(2, '0')}:${mealTime.minute.toString().padLeft(2, '0')}',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
+                    ),
+                  ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -1339,6 +1406,127 @@ class _HomeTabState extends State<HomeTab> with TickerProviderStateMixin {
             ),
           );
         }
+      }
+    }
+  }
+
+  // Öğün tıklama işlemi
+  void _handleMealTap(BuildContext context, AppViewModel appViewModel, String mealType, String mealName, bool isCompleted) async {
+    try {
+      if (isCompleted) {
+        // Öğün tamamlandıysa, onay isteyerek iptal et
+        final shouldCancel = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Row(
+              children: [
+                Icon(Icons.help_outline, color: Colors.orange),
+                const SizedBox(width: 8),
+                Text('$mealName İptal'),
+              ],
+            ),
+            content: Text('$mealName öğününüz tamamlandı olarak işaretlendi. İptal etmek istiyor musunuz?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Hayır'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('İptal Et'),
+              ),
+            ],
+          ),
+        );
+
+        if (shouldCancel == true) {
+          final success = await appViewModel.markMealAsIncomplete(mealType);
+          if (success && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(Icons.cancel_outlined, color: Colors.white),
+                    const SizedBox(width: 8),
+                    Text('$mealName iptal edildi'),
+                  ],
+                ),
+                backgroundColor: Colors.orange,
+                duration: const Duration(seconds: 2),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            );
+          }
+        }
+      } else {
+        // Öğün tamamlanmadıysa, tamamla
+        final success = await appViewModel.markMealAsCompleted(mealType);
+        if (success && context.mounted) {
+          // Başarı animasyonu tetikle
+          _bounceController.forward().then((_) {
+            _bounceController.reverse();
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '$mealName tamamlandı!',
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                      Text(
+                        '${DateTime.now().hour.toString().padLeft(2, '0')}:${DateTime.now().minute.toString().padLeft(2, '0')}',
+                        style: const TextStyle(fontSize: 12, color: Colors.white70),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              margin: const EdgeInsets.all(16),
+            ),
+          );
+        } else if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('$mealName işaretlenirken hata oluştu'),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Hata: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
     }
   }

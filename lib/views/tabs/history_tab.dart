@@ -14,18 +14,22 @@ class HistoryTab extends StatefulWidget {
   State<HistoryTab> createState() => _HistoryTabState();
 }
 
-class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateMixin {
+class _HistoryTabState extends State<HistoryTab> with TickerProviderStateMixin {
   late TabController _tabController;
+  late TabController _periodTabController;
+  String _selectedPeriod = 'Günlük'; // Günlük, Haftalık, Aylık
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
+    _periodTabController = TabController(length: 3, vsync: this);
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _periodTabController.dispose();
     super.dispose();
   }
 
@@ -38,11 +42,13 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
         children: [
           _buildHeader(context),
           _buildTabBar(context),
+          _buildPeriodSelector(context),
           Expanded(
             child: TabBarView(
               controller: _tabController,
               children: [
                 _buildFoodHistoryTab(context),
+                _buildMealStatsTab(context),
                 _buildSleepHistoryTab(context),
               ],
             ),
@@ -140,9 +146,55 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
             text: 'Yemek Geçmişi',
           ),
           Tab(
+            icon: Icon(Icons.pie_chart),
+            text: 'Öğün İstatistikleri',
+          ),
+          Tab(
             icon: Icon(Icons.bedtime),
             text: 'Uyku Geçmişi',
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPeriodSelector(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      color: isDarkMode ? Colors.grey[900] : Colors.white,
+      child: TabBar(
+        controller: _periodTabController,
+        indicatorColor: Theme.of(context).colorScheme.primary,
+        indicatorWeight: 2,
+        labelColor: Theme.of(context).colorScheme.primary,
+        unselectedLabelColor: isDarkMode ? Colors.grey.shade400 : Colors.grey.shade600,
+        labelStyle: const TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+        ),
+        unselectedLabelStyle: const TextStyle(
+          fontWeight: FontWeight.w500,
+          fontSize: 14,
+        ),
+        onTap: (index) {
+          setState(() {
+            switch (index) {
+              case 0:
+                _selectedPeriod = 'Günlük';
+                break;
+              case 1:
+                _selectedPeriod = 'Haftalık';
+                break;
+              case 2:
+                _selectedPeriod = 'Aylık';
+                break;
+            }
+          });
+        },
+        tabs: const [
+          Tab(text: 'Günlük'),
+          Tab(text: 'Haftalık'),
+          Tab(text: 'Aylık'),
         ],
       ),
     );
@@ -164,6 +216,25 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
             await appViewModel.loadFoodHistory();
           },
           child: _buildFoodList(context, appViewModel.foodHistory),
+        );
+      },
+    );
+  }
+
+  Widget _buildMealStatsTab(BuildContext context) {
+    return Consumer<AppViewModel>(
+      builder: (context, appViewModel, child) {
+        final profile = appViewModel.userProfile;
+        if (profile == null) {
+          return _buildEmptyProfileState();
+        }
+
+        return RefreshIndicator(
+          onRefresh: () async {
+            await appViewModel.loadMealStatistics();
+            await appViewModel.loadUserProfile();
+          },
+          child: _buildMealStatsList(context, appViewModel),
         );
       },
     );
@@ -1209,6 +1280,544 @@ class _HistoryTabState extends State<HistoryTab> with SingleTickerProviderStateM
     return date.year == now.year &&
            date.month == now.month &&
            date.day == now.day;
+  }
+
+  Widget _buildMealStatsList(BuildContext context, AppViewModel appViewModel) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
+    return Container(
+      color: isDarkMode ? Colors.black : Colors.grey.shade50,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          // Bugünün öğün durumu
+          _buildTodaysMealStatus(context, appViewModel),
+          const SizedBox(height: 16),
+          
+          // Öğün istatistikleri
+          _buildMealStatsCard(context, appViewModel),
+          const SizedBox(height: 16),
+          
+          // Haftalık öğün takibi
+          _buildWeeklyMealTracking(context, appViewModel),
+          const SizedBox(height: 16),
+          
+          // Öğün önerileri
+          _buildMealSuggestions(context, appViewModel),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTodaysMealStatus(BuildContext context, AppViewModel appViewModel) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final completionRate = appViewModel.todaysMealCompletionRate;
+    final todaysMeals = appViewModel.userProfile?.todaysMeals ?? {};
+    
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFF4A90E2),
+            const Color(0xFF6BB6FF),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF4A90E2).withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.restaurant,
+                color: Colors.white,
+                size: 28,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Bugünün Öğün Durumu',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${(completionRate * 100).toInt()}%',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          // Progress bar
+          Container(
+            height: 8,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: FractionallySizedBox(
+              alignment: Alignment.centerLeft,
+              widthFactor: completionRate,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          
+          // Öğün listesi
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildMealStatusItem('Kahvaltı', 'breakfast', todaysMeals, Icons.local_cafe, Colors.orange),
+              _buildMealStatusItem('Öğle', 'lunch', todaysMeals, Icons.restaurant, Colors.green),
+              _buildMealStatusItem('Akşam', 'dinner', todaysMeals, Icons.nightlight, Colors.blue),
+              _buildMealStatusItem('Atıştırma', 'snack', todaysMeals, Icons.apple, Colors.red),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMealStatusItem(String name, String mealType, Map<String, DateTime> todaysMeals, IconData icon, Color color) {
+    final isCompleted = todaysMeals.containsKey(mealType);
+    final time = todaysMeals[mealType];
+    
+    return Column(
+      children: [
+        Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            color: isCompleted ? Colors.white.withOpacity(0.9) : Colors.white.withOpacity(0.3),
+            borderRadius: BorderRadius.circular(25),
+          ),
+          child: Stack(
+            children: [
+              Center(
+                child: Icon(
+                  icon,
+                  color: isCompleted ? color : Colors.white.withOpacity(0.8),
+                  size: 24,
+                ),
+              ),
+              if (isCompleted)
+                Positioned(
+                  right: 2,
+                  top: 2,
+                  child: Container(
+                    width: 16,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.check,
+                      color: Colors.white,
+                      size: 10,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          name,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        if (isCompleted && time != null)
+          Text(
+            '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.8),
+              fontSize: 10,
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildMealStatsCard(BuildContext context, AppViewModel appViewModel) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final weeklyTotal = appViewModel.weeklyCompletedMeals;
+    final mostCompleted = appViewModel.mostCompletedMeal;
+    final averageCompletion = appViewModel.averageDailyMealCompletion;
+    
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDarkMode ? Colors.grey[850] : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.analytics,
+                color: Theme.of(context).colorScheme.primary,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Öğün İstatistikleri',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatCard(
+                  'Bu Hafta',
+                  '$weeklyTotal öğün',
+                  Colors.blue.shade400,
+                  Icons.calendar_view_week,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildStatCard(
+                  'En Çok',
+                  _getMealDisplayName(mostCompleted),
+                  Colors.green.shade400,
+                  Icons.star,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatCard(
+                  'Ortalama',
+                  '${(averageCompletion * 100).toInt()}%',
+                  Colors.orange.shade400,
+                  Icons.trending_up,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildStatCard(
+                  'Bugün',
+                  '${(appViewModel.todaysMealCompletionRate * 100).toInt()}%',
+                  Colors.purple.shade400,
+                  Icons.today,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeeklyMealTracking(BuildContext context, AppViewModel appViewModel) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDarkMode ? Colors.grey[850] : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.calendar_today,
+                color: Theme.of(context).colorScheme.primary,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Haftalık Takip',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          // Haftalık calendar view (basit)
+          _buildWeeklyCalendar(context, appViewModel),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeeklyCalendar(BuildContext context, AppViewModel appViewModel) {
+    final now = DateTime.now();
+    final weekDays = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+    
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: List.generate(7, (index) {
+        final date = now.subtract(Duration(days: 6 - index));
+        final isToday = _isToday(date);
+        final completionRate = isToday ? appViewModel.todaysMealCompletionRate : 0.5; // Mock data for other days
+        
+        return Column(
+          children: [
+            Text(
+              weekDays[date.weekday - 1],
+              style: TextStyle(
+                fontSize: 12,
+                color: isToday ? Theme.of(context).colorScheme.primary : Colors.grey,
+                fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              date.day.toString(),
+              style: TextStyle(
+                fontSize: 14,
+                color: isToday ? Theme.of(context).colorScheme.primary : Colors.grey,
+                fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(
+                color: _getCompletionColor(completionRate).withOpacity(0.2),
+                borderRadius: BorderRadius.circular(15),
+                border: Border.all(
+                  color: _getCompletionColor(completionRate),
+                  width: 2,
+                ),
+              ),
+              child: Center(
+                child: Text(
+                  '${(completionRate * 4).toInt()}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: _getCompletionColor(completionRate),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      }),
+    );
+  }
+
+  Widget _buildMealSuggestions(BuildContext context, AppViewModel appViewModel) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final todaysMeals = appViewModel.userProfile?.todaysMeals ?? {};
+    final missedMeals = ['breakfast', 'lunch', 'dinner', 'snack']
+        .where((meal) => !todaysMeals.containsKey(meal))
+        .toList();
+    
+    if (missedMeals.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: isDarkMode ? Colors.grey[850] : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Icon(
+              Icons.celebration,
+              size: 48,
+              color: Colors.green.shade400,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Tebrikler!',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Colors.green.shade400,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Bugün tüm öğünlerinizi tamamladınız!',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+    
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDarkMode ? Colors.grey[850] : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.lightbulb,
+                color: Theme.of(context).colorScheme.primary,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Öğün Önerileri',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          Text(
+            'Henüz tamamlamadığınız öğünler:',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: isDarkMode ? Colors.grey.shade300 : Colors.grey.shade600,
+            ),
+          ),
+          const SizedBox(height: 12),
+          
+          ...missedMeals.map((meal) => Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.orange.withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  _getMealIcon(meal),
+                  color: Colors.orange,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _getMealDisplayName(meal),
+                  style: TextStyle(
+                    color: Colors.orange,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          )).toList(),
+        ],
+      ),
+    );
+  }
+
+  String _getMealDisplayName(String mealType) {
+    switch (mealType) {
+      case 'breakfast':
+        return 'Kahvaltı';
+      case 'lunch':
+        return 'Öğle Yemeği';
+      case 'dinner':
+        return 'Akşam Yemeği';
+      case 'snack':
+        return 'Atıştırma';
+      default:
+        return mealType;
+    }
+  }
+
+  IconData _getMealIcon(String mealType) {
+    switch (mealType) {
+      case 'breakfast':
+        return Icons.local_cafe;
+      case 'lunch':
+        return Icons.restaurant;
+      case 'dinner':
+        return Icons.nightlight;
+      case 'snack':
+        return Icons.apple;
+      default:
+        return Icons.restaurant;
+    }
+  }
+
+  Color _getCompletionColor(double completionRate) {
+    if (completionRate >= 0.75) return Colors.green.shade400;
+    if (completionRate >= 0.5) return Colors.orange.shade400;
+    return Colors.red.shade400;
   }
 
   bool _isYesterday(DateTime date) {

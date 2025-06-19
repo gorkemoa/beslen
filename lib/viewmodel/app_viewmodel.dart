@@ -18,6 +18,7 @@ class AppViewModel extends ChangeNotifier {
   List<WaterIntake> _waterHistory = [];
   List<SleepRecord> _sleepHistory = [];
   Map<String, dynamic> _sleepStatistics = {};
+  Map<String, dynamic> _mealStatistics = {};
   bool _isLoading = false;
   String? _error;
   bool _isDarkMode = false;
@@ -30,6 +31,7 @@ class AppViewModel extends ChangeNotifier {
   List<WaterIntake> get waterHistory => _waterHistory;
   List<SleepRecord> get sleepHistory => _sleepHistory;
   Map<String, dynamic> get sleepStatistics => _sleepStatistics;
+  Map<String, dynamic> get mealStatistics => _mealStatistics;
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get isDarkMode => _isDarkMode;
@@ -160,6 +162,7 @@ class AppViewModel extends ChangeNotifier {
       _waterHistory.clear();
       _sleepHistory.clear();
       _sleepStatistics.clear();
+      _mealStatistics.clear();
       _error = null;
       
       print('AppViewModel: Kullanıcı verileri temizlendi');
@@ -175,6 +178,7 @@ class AppViewModel extends ChangeNotifier {
       _waterHistory.clear();
       _sleepHistory.clear();
       _sleepStatistics.clear();
+      _mealStatistics.clear();
       
       // Hata mesajını set et ama throw etme, çıkış işlemi devam etsin
       _setError('Çıkış sırasında bir hata oluştu, ancak yerel veriler temizlendi.');
@@ -201,6 +205,7 @@ class AppViewModel extends ChangeNotifier {
           await loadWaterHistory();
           await loadSleepHistory();
           await loadSleepStatistics();
+          await loadMealStatistics();
         } else {
           print('Profil bulunamadı, yeni kullanıcı olabilir');
         }
@@ -472,6 +477,11 @@ class AppViewModel extends ChangeNotifier {
         _todaysFoods.clear();
         _todaysWaterIntake.clear();
         
+        // Öğün verilerini de temizle
+        if (_userProfile != null) {
+          _userProfile = _userProfile!.copyWith(todaysMeals: {});
+        }
+        
         // Profili yeniden yükle (uyku zamanı güncellensin)
         await loadUserProfile();
         
@@ -518,6 +528,11 @@ class AppViewModel extends ChangeNotifier {
       final success = await _firebaseService.setWakeUpTime(user.uid);
       
       if (success) {
+        // Local state'deki öğün verilerini temizle
+        if (_userProfile != null) {
+          _userProfile = _userProfile!.copyWith(todaysMeals: {});
+        }
+        
         // Profili yeniden yükle (uyku zamanı temizlensin)
         await loadUserProfile();
         
@@ -528,6 +543,7 @@ class AppViewModel extends ChangeNotifier {
         // Uyku verilerini güncelle
         await loadSleepHistory();
         await loadSleepStatistics();
+        await loadMealStatistics();
         
         notifyListeners();
         return true;
@@ -556,6 +572,121 @@ class AppViewModel extends ChangeNotifier {
   void clearError() {
     _error = null;
     notifyListeners();
+  }
+
+  // Öğün takibi fonksiyonları
+  
+  // Öğün tamamlandı olarak işaretle
+  Future<bool> markMealAsCompleted(String mealType) async {
+    final user = _firebaseService.currentUser;
+    if (user == null || _userProfile == null) return false;
+
+    try {
+      final currentMeals = Map<String, DateTime>.from(_userProfile!.todaysMeals ?? {});
+      currentMeals[mealType] = DateTime.now();
+      
+      final updatedProfile = _userProfile!.copyWith(todaysMeals: currentMeals);
+      final success = await _firebaseService.saveUserProfile(updatedProfile);
+      
+      if (success) {
+        _userProfile = updatedProfile;
+        notifyListeners();
+      }
+      return success;
+    } catch (e) {
+      _setError('Öğün işaretlenirken hata oluştu: $e');
+      return false;
+    }
+  }
+
+  // Öğün tamamlanmadı olarak işaretle
+  Future<bool> markMealAsIncomplete(String mealType) async {
+    final user = _firebaseService.currentUser;
+    if (user == null || _userProfile == null) return false;
+
+    try {
+      final currentMeals = Map<String, DateTime>.from(_userProfile!.todaysMeals ?? {});
+      currentMeals.remove(mealType);
+      
+      final updatedProfile = _userProfile!.copyWith(todaysMeals: currentMeals);
+      final success = await _firebaseService.saveUserProfile(updatedProfile);
+      
+      if (success) {
+        _userProfile = updatedProfile;
+        notifyListeners();
+      }
+      return success;
+    } catch (e) {
+      _setError('Öğün işaretlenirken hata oluştu: $e');
+      return false;
+    }
+  }
+
+  // Öğün tamamlanmış mı kontrol et
+  bool isMealCompleted(String mealType) {
+    return _userProfile?.todaysMeals?.containsKey(mealType) ?? false;
+  }
+
+  // Öğün zamanını getir
+  DateTime? getMealTime(String mealType) {
+    return _userProfile?.todaysMeals?[mealType];
+  }
+
+  // Öğün istatistiklerini yükleme
+  Future<void> loadMealStatistics() async {
+    final user = _firebaseService.currentUser;
+    if (user != null) {
+      // Geçici olarak mock data kullan - Firebase Service'e daha sonra eklenecek
+      _mealStatistics = {
+        'weeklyTotal': _calculateWeeklyMeals(),
+        'mostCompleted': _findMostCompletedMeal(),
+        'averageCompletion': _calculateAverageCompletion(),
+        'lastUpdated': DateTime.now().millisecondsSinceEpoch,
+      };
+      notifyListeners();
+    }
+  }
+
+  // Haftalık öğün hesaplama (geçici)
+  int _calculateWeeklyMeals() {
+    if (_userProfile?.todaysMeals == null) return 0;
+    return _userProfile!.todaysMeals!.length * 7; // Basit hesaplama
+  }
+
+  // En çok tamamlanan öğün bulma (geçici)
+  String _findMostCompletedMeal() {
+    if (_userProfile?.todaysMeals == null) return 'Kahvaltı';
+    final meals = _userProfile!.todaysMeals!.keys.toList();
+    if (meals.isEmpty) return 'Kahvaltı';
+    return meals.first; // İlk tamamlanan öğün
+  }
+
+  // Ortalama tamamlanma hesaplama (geçici)
+  double _calculateAverageCompletion() {
+    return todaysMealCompletionRate;
+  }
+
+  // Günlük öğün tamamlanma oranı
+  double get todaysMealCompletionRate {
+    if (_userProfile?.todaysMeals == null) return 0.0;
+    final totalMeals = 4; // Kahvaltı, öğle, akşam, atıştırma
+    final completedMeals = _userProfile!.todaysMeals!.length;
+    return completedMeals / totalMeals;
+  }
+
+  // Bu haftaki toplam öğün sayısı
+  int get weeklyCompletedMeals {
+    return _mealStatistics['weeklyTotal'] ?? 0;
+  }
+
+  // En çok tamamlanan öğün
+  String get mostCompletedMeal {
+    return _mealStatistics['mostCompleted'] ?? 'Kahvaltı';
+  }
+
+  // Ortalama günlük öğün tamamlanma oranı
+  double get averageDailyMealCompletion {
+    return (_mealStatistics['averageCompletion'] ?? 0.0).toDouble();
   }
 
   // Tema değiştirme

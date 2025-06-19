@@ -85,7 +85,7 @@ class RecommendationsTab extends StatelessWidget {
         }
         
         if (snapshot.hasError) {
-          return _buildErrorCard(context, 'Analiz hatası: ${snapshot.error}');
+          return _buildErrorCard(context, 'Analiz geçici olarak kullanılamıyor. Lütfen tekrar deneyin.');
         }
         
         final analysis = snapshot.data ?? {};
@@ -103,7 +103,7 @@ class RecommendationsTab extends StatelessWidget {
         }
         
         if (snapshot.hasError) {
-          return _buildErrorCard(context, 'Öneri hatası: ${snapshot.error}');
+          return _buildErrorCard(context, 'Öneriler geçici olarak kullanılamıyor. Lütfen tekrar deneyin.');
         }
         
         final recommendations = snapshot.data ?? [];
