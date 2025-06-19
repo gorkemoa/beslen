@@ -4,107 +4,82 @@ class DailySummary {
   final String id;
   final String userId;
   final DateTime date;
-  final List<FoodItem> consumedFoods;
-  final NutritionInfo totalNutrition;
-  final double calorieGoal;
-  final int waterIntake; // ml
-  final int waterGoal; // ml
+  final List<FoodItem> foods;
+  final double? targetCalories;
 
   DailySummary({
     required this.id,
     required this.userId,
     required this.date,
-    required this.consumedFoods,
-    required this.totalNutrition,
-    required this.calorieGoal,
-    this.waterIntake = 0,
-    this.waterGoal = 2000,
+    required this.foods,
+    this.targetCalories,
   });
 
-  factory DailySummary.fromMap(Map<String, dynamic> map) {
+  factory DailySummary.fromJson(Map<String, dynamic> json) {
     return DailySummary(
-      id: map['id'] ?? '',
-      userId: map['userId'] ?? '',
-      date: DateTime.parse(map['date'] ?? DateTime.now().toIso8601String()),
-      consumedFoods: (map['consumedFoods'] as List<dynamic>? ?? [])
-          .map((food) => FoodItem.fromMap(food as Map<String, dynamic>))
+      id: json['id'] ?? '',
+      userId: json['userId'] ?? '',
+      date: DateTime.parse(json['date'] ?? DateTime.now().toIso8601String()),
+      foods: (json['foods'] as List<dynamic>? ?? [])
+          .map((food) => FoodItem.fromJson(food))
           .toList(),
-      totalNutrition: NutritionInfo.fromMap(map['totalNutrition'] ?? {}),
-      calorieGoal: (map['calorieGoal'] ?? 0.0).toDouble(),
-      waterIntake: map['waterIntake'] ?? 0,
-      waterGoal: map['waterGoal'] ?? 2000,
+      targetCalories: json['targetCalories']?.toDouble(),
     );
   }
 
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toJson() {
     return {
       'id': id,
       'userId': userId,
-      'date': date.toIso8601String().split('T')[0], // Only date part
-      'consumedFoods': consumedFoods.map((food) => food.toMap()).toList(),
-      'totalNutrition': totalNutrition.toMap(),
-      'calorieGoal': calorieGoal,
-      'waterIntake': waterIntake,
-      'waterGoal': waterGoal,
+      'date': date.toIso8601String(),
+      'foods': foods.map((food) => food.toJson()).toList(),
+      'targetCalories': targetCalories,
     };
   }
 
-  DailySummary copyWith({
-    String? id,
-    String? userId,
-    DateTime? date,
-    List<FoodItem>? consumedFoods,
-    NutritionInfo? totalNutrition,
-    double? calorieGoal,
-    int? waterIntake,
-    int? waterGoal,
-  }) {
-    return DailySummary(
-      id: id ?? this.id,
-      userId: userId ?? this.userId,
-      date: date ?? this.date,
-      consumedFoods: consumedFoods ?? this.consumedFoods,
-      totalNutrition: totalNutrition ?? this.totalNutrition,
-      calorieGoal: calorieGoal ?? this.calorieGoal,
-      waterIntake: waterIntake ?? this.waterIntake,
-      waterGoal: waterGoal ?? this.waterGoal,
-    );
+  // Toplam besin değerleri hesaplamaları
+  double get totalCalories => foods.fold(0.0, (sum, food) => sum + food.totalCalories);
+  double get totalProtein => foods.fold(0.0, (sum, food) => sum + food.totalProtein);
+  double get totalCarbohydrates => foods.fold(0.0, (sum, food) => sum + food.totalCarbohydrates);
+  double get totalFat => foods.fold(0.0, (sum, food) => sum + food.totalFat);
+  double get totalFiber => foods.fold(0.0, (sum, food) => sum + food.totalFiber);
+
+  // Yüzde hesaplamaları
+  double get calorieProgress {
+    if (targetCalories == null || targetCalories == 0) return 0.0;
+    return (totalCalories / targetCalories!) * 100;
   }
 
-  // Kalan kalori hesapla
-  double get remainingCalories => calorieGoal - totalNutrition.calories;
+  bool get isTargetMet => targetCalories != null && totalCalories >= targetCalories!;
 
-  // Kalori hedefine ulaşma yüzdesi
-  double get calorieProgress => (totalNutrition.calories / calorieGoal).clamp(0.0, 1.0);
-
-  // Su tüketim yüzdesi
-  double get waterProgress => (waterIntake / waterGoal).clamp(0.0, 1.0);
-
-  // Makronutrient yüzdeleri
+  // Makro besin yüzdeleri
   double get proteinPercentage {
-    double totalCals = totalNutrition.calories;
-    if (totalCals == 0) return 0.0;
-    return (totalNutrition.protein * 4) / totalCals;
+    if (totalCalories == 0) return 0.0;
+    return (totalProtein * 4 / totalCalories) * 100; // 1g protein = 4 kalori
   }
 
-  double get carbsPercentage {
-    double totalCals = totalNutrition.calories;
-    if (totalCals == 0) return 0.0;
-    return (totalNutrition.carbohydrates * 4) / totalCals;
+  double get carbohydratePercentage {
+    if (totalCalories == 0) return 0.0;
+    return (totalCarbohydrates * 4 / totalCalories) * 100; // 1g carb = 4 kalori
   }
 
   double get fatPercentage {
-    double totalCals = totalNutrition.calories;
-    if (totalCals == 0) return 0.0;
-    return (totalNutrition.fat * 9) / totalCals;
+    if (totalCalories == 0) return 0.0;
+    return (totalFat * 9 / totalCalories) * 100; // 1g fat = 9 kalori
   }
 
-  // Günlük hedef protein (vücut ağırlığı * 1.6g)
-  double getProteinGoal(double bodyWeight) => bodyWeight * 1.6;
+  int get mealCount => foods.length;
 
-  // Günlük hedef karbonhidrat (toplam kalorinin %45-65'i)
-  double getCarbGoal() => (calorieGoal * 0.55) / 4;
-
-  // Günlük hedef yağ (toplam kalorinin %20-35'i)
-  double getFatGoal() => (calorieGoal * 0.25) / 9;
+  DailySummary copyWith({
+    List<FoodItem>? foods,
+    double? targetCalories,
+  }) {
+    return DailySummary(
+      id: id,
+      userId: userId,
+      date: date,
+      foods: foods ?? this.foods,
+      targetCalories: targetCalories ?? this.targetCalories,
+    );
+  }
 } 

@@ -41,18 +41,22 @@ dependencies:
   cloud_firestore: ^5.5.0
   firebase_storage: ^12.3.4
   
-  # AI
-  google_generative_ai: ^0.4.6
-  
-  # Image & Camera
+  # Camera & Image
+  camera: ^0.11.0+2
   image_picker: ^1.1.2
-  permission_handler: ^11.3.1
   
-  # State Management
+  # AI & HTTP
+  google_generative_ai: ^0.4.6
+  http: ^1.2.2
+  
+  # UI & State Management
+  google_fonts: ^6.2.1
   provider: ^6.1.2
   
-  # UI
-  google_fonts: ^6.2.1
+  # Utils
+  shared_preferences: ^2.3.2
+  intl: ^0.19.0
+  path_provider: ^2.1.4
 
 dev_dependencies:
   flutter_test:

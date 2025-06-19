@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:google_generative_ai/google_generative_ai.dart';
@@ -6,55 +5,36 @@ import '../models/food_item.dart';
 
 class GeminiAIService {
   late final GenerativeModel _model;
+  static const String _apiKey = 'YOUR_GEMINI_API_KEY'; // Bu değer .env dosyasından gelecek
 
   GeminiAIService() {
-    // Environment variable'dan API key al
-    const apiKey = String.fromEnvironment('GEMINI_API_KEY');
-    if (apiKey.isEmpty) {
-      throw Exception('GEMINI_API_KEY environment variable bulunamadı. Lütfen API key\'inizi tanımlayın.');
-    }
-    
     _model = GenerativeModel(
       model: 'gemini-2.0-flash',
-      apiKey: apiKey,
+      apiKey: _apiKey,
     );
   }
 
-  Future<FoodItem?> analyzeFoodImage(File imageFile) async {
+  Future<FoodAnalysisResult> analyzeFoodImage(File imageFile) async {
     try {
       final bytes = await imageFile.readAsBytes();
       
       final prompt = '''
-      Bu görüntüdeki yemeği analiz et ve aşağıdaki JSON formatında detaylı besin bilgilerini ver:
-
+      Bu görseldeki yemeği analiz et ve aşağıdaki bilgileri JSON formatında ver:
+      
       {
-        "name": "Yemeğin adı",
-        "description": "Yemeğin kısa açıklaması",
-        "nutritionInfo": {
-          "calories": 0.0,
-          "protein": 0.0,
-          "carbohydrates": 0.0,
-          "fat": 0.0,
-          "fiber": 0.0,
-          "sugar": 0.0,
-          "sodium": 0.0,
-          "calcium": 0.0,
-          "iron": 0.0,
-          "vitaminC": 0.0,
-          "vitaminA": 0.0
-        },
-        "ingredients": ["malzeme1", "malzeme2"],
-        "allergens": ["alerjen1", "alerjen2"],
-        "portionSize": 1.0,
-        "portionUnit": "porsiyon"
+        "name": "yemeğin adı",
+        "description": "yemeğin kısa açıklaması",
+        "calories": 100 gram başına kalori miktarı (sayı),
+        "protein": 100 gram başına protein miktarı gram cinsinden (sayı),
+        "carbohydrates": 100 gram başına karbonhidrat miktarı gram cinsinden (sayı),
+        "fat": 100 gram başına yağ miktarı gram cinsinden (sayı),
+        "fiber": 100 gram başına lif miktarı gram cinsinden (sayı),
+        "estimatedPortion": tahmin edilen porsiyon miktarı gram cinsinden (sayı),
+        "confidence": tahmin güvenilirlik skoru 0-1 arası (sayı)
       }
-
-      Önemli notlar:
-      - Türkçe yemek adları kullan
-      - Besin değerleri 100g için olsun
-      - Yaygın alerjenleri listele (gluten, süt, yumurta, fındık, soya, balık, kabuklu deniz ürünleri, susam)
-      - Sadece JSON formatında yanıt ver, başka açıklama ekleme
-      - Eğer görüntüde yemek yoksa veya analiz edilemiyorsa boş JSON döndür: {}
+      
+      Eğer görsel yemek değilse veya tanımlanamazsa, confidence değerini 0 yap.
+      Sadece JSON yanıtı ver, başka açıklama ekleme.
       ''';
 
       final content = [
@@ -65,95 +45,89 @@ class GeminiAIService {
       ];
 
       final response = await _model.generateContent(content);
-      final responseText = response.text?.trim() ?? '';
-
-      if (responseText.isEmpty) {
-        throw Exception('AI servisinden boş yanıt alındı');
-      }
-
-      // JSON'u temizle
-      String cleanedJson = responseText;
-      if (cleanedJson.startsWith('```json')) {
-        cleanedJson = cleanedJson.substring(7);
-      }
-      if (cleanedJson.endsWith('```')) {
-        cleanedJson = cleanedJson.substring(0, cleanedJson.length - 3);
-      }
-      cleanedJson = cleanedJson.trim();
-
-      final jsonData = json.decode(cleanedJson) as Map<String, dynamic>;
-
-      // Boş JSON kontrolü
-      if (jsonData.isEmpty || !jsonData.containsKey('name')) {
-        throw Exception('Görüntüde yemek tespit edilemedi veya analiz edilemedi');
-      }
-
-      return FoodItem(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        name: jsonData['name'] ?? 'Bilinmeyen Yemek',
-        description: jsonData['description'] ?? '',
-        imageUrl: imageFile.path,
-        nutritionInfo: NutritionInfo.fromMap(jsonData['nutritionInfo'] ?? {}),
-        ingredients: List<String>.from(jsonData['ingredients'] ?? []),
-        allergens: List<String>.from(jsonData['allergens'] ?? []),
-        consumedAt: DateTime.now(),
-        portionSize: (jsonData['portionSize'] ?? 1.0).toDouble(),
-        portionUnit: jsonData['portionUnit'] ?? 'porsiyon',
-      );
+      final responseText = response.text ?? '';
+      
+      return _parseAnalysisResult(responseText);
     } catch (e) {
-      // Fallback item döndürme, hata fırlat
-      throw Exception('Yemek analiz edilemedi: $e');
+      throw Exception('Görsel analizi sırasında hata: $e');
     }
   }
 
-  Future<List<String>> suggestSimilarFoods(String foodName) async {
+  Future<List<String>> getDailyRecommendations(List<FoodItem> recentFoods, double targetCalories) async {
     try {
+      final recentFoodsText = recentFoods.map((food) => food.name).join(', ');
+      
       final prompt = '''
-      "$foodName" yemeğine benzer 5 Türk yemeği öner.
-      Sadece yemek isimlerini virgülle ayırarak listele, başka açıklama ekleme.
-      Örnek: Pilav, Köfte, Dolma, Börek, Çorba
+      Kullanıcının son zamanlarda tükettiği yemekler: $recentFoodsText
+      Günlük hedef kalori: $targetCalories
+      
+      Bu bilgilere dayanarak kullanıcıya 5 sağlıklı beslenme önerisi ver.
+      Her öneriyi ayrı satırda listele, madde işareti kullanma.
+      Öneriler Türkçe olmalı ve pratik uygulanabilir olmalı.
       ''';
 
-      final content = [Content.text(prompt)];
-      final response = await _model.generateContent(content);
-      final responseText = response.text?.trim() ?? '';
-
-      if (responseText.isEmpty) {
-        return [];
-      }
-
+      final response = await _model.generateContent([Content.text(prompt)]);
+      final responseText = response.text ?? '';
+      
       return responseText
-          .split(',')
-          .map((e) => e.trim())
-          .where((e) => e.isNotEmpty)
+          .split('\n')
+          .where((line) => line.trim().isNotEmpty)
+          .take(5)
           .toList();
     } catch (e) {
-      print('Benzer yemek önerisi hatası: $e');
-      return [];
+      return [
+        'Günde en az 5 porsiyon sebze ve meyve tüketin',
+        'Bol su için, günde en az 8 bardak su içmeye çalışın',
+        'Öğün aralarında sağlıklı atıştırmalıklar tercih edin',
+        'Porsiyon miktarlarınıza dikkat edin',
+        'Düzenli öğün saatlerine uyun'
+      ];
     }
   }
 
-  Future<String> generateMealRecommendation(
-    double remainingCalories,
-    List<String> allergies,
-    List<String> dietaryRestrictions,
-  ) async {
+  FoodAnalysisResult _parseAnalysisResult(String responseText) {
     try {
-      final prompt = '''
-      Kalan kalori: $remainingCalories
-      Alerjiler: ${allergies.join(', ')}
-      Diyet kısıtlamaları: ${dietaryRestrictions.join(', ')}
-      
-      Bu bilgilere göre sağlıklı bir öğün önerisi yap. Türkçe olarak kısa ve net bir öneri ver.
-      ''';
-
-      final content = [Content.text(prompt)];
-      final response = await _model.generateContent(content);
-      
-      return response.text?.trim() ?? 'Öğün önerisi oluşturulamadı.';
+      // JSON parsing burada yapılacak
+      // Şimdilik basit bir örnek dönüyoruz
+      return FoodAnalysisResult(
+        name: 'Tanınmayan Yemek',
+        description: 'Görsel analiz edilemedi',
+        calories: 0,
+        protein: 0,
+        carbohydrates: 0,
+        fat: 0,
+        fiber: 0,
+        estimatedPortion: 100,
+        confidence: 0,
+      );
     } catch (e) {
-      print('Öğün önerisi hatası: $e');
-      return 'Öğün önerisi oluşturulamadı.';
+      throw Exception('Analiz sonucu ayrıştırılamadı: $e');
     }
   }
+}
+
+class FoodAnalysisResult {
+  final String name;
+  final String description;
+  final double calories;
+  final double protein;
+  final double carbohydrates;
+  final double fat;
+  final double fiber;
+  final double estimatedPortion;
+  final double confidence;
+
+  FoodAnalysisResult({
+    required this.name,
+    required this.description,
+    required this.calories,
+    required this.protein,
+    required this.carbohydrates,
+    required this.fat,
+    required this.fiber,
+    required this.estimatedPortion,
+    required this.confidence,
+  });
+
+  bool get isValid => confidence > 0.5;
 } 

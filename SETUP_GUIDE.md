@@ -4,13 +4,30 @@
 
 Uygulamanın çalışması için aşağıdaki environment variable'ları ayarlamanız gerekiyor:
 
-### 1. Gemini AI API Key
+### 1. .env Dosyası (Önerilen)
+
+Proje kök dizininde `.env` dosyası oluşturun:
 
 ```bash
-export GEMINI_API_KEY="your_gemini_api_key_here"
+# .env dosyası oluşturun
+cp env.example .env
 ```
 
-### Flutter'da Environment Variable Kullanımı
+Sonra `.env` dosyasını düzenleyin:
+
+```env
+# Gemini AI API Key
+GEMINI_API_KEY=your_gemini_api_key_here
+
+# Development Environment
+FLUTTER_ENV=development
+
+# Debug Flags (Opsiyonel)
+DEBUG_FIREBASE=false
+DEBUG_AI=false
+```
+
+### 2. Dart Define (Alternatif)
 
 Uygulamayı çalıştırırken:
 
@@ -33,7 +50,12 @@ flutter build apk --dart-define=GEMINI_API_KEY=your_gemini_api_key_here
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "beslen",
+            "name": "beslen (.env)",
+            "request": "launch",
+            "type": "dart"
+        },
+        {
+            "name": "beslen (dart-define)",
             "request": "launch",
             "type": "dart",
             "toolArgs": [

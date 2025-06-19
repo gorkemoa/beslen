@@ -1,195 +1,197 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import '../models/food_item.dart';
-import '../models/user_profile.dart';
-import '../service/camera_service.dart';
-import '../service/gemini_ai_service.dart';
 import '../service/firebase_service.dart';
+import '../service/gemini_ai_service.dart';
+import '../service/camera_service.dart';
 
 class FoodScannerViewModel extends ChangeNotifier {
-  final CameraService _cameraService = CameraService();
-  final GeminiAIService _aiService = GeminiAIService();
   final FirebaseService _firebaseService = FirebaseService();
+  final GeminiAIService _aiService = GeminiAIService();
+  final CameraService _cameraService = CameraService();
 
-  bool _isLoading = false;
-  bool _isAnalyzing = false;
-  String? _error;
+  File? _selectedImage;
+  FoodAnalysisResult? _analysisResult;
   FoodItem? _analyzedFood;
-  File? _capturedImage;
-  UserProfile? _userProfile;
+  bool _isAnalyzing = false;
+  bool _isSaving = false;
+  String? _error;
 
-  bool get isLoading => _isLoading;
-  bool get isAnalyzing => _isAnalyzing;
-  String? get error => _error;
+  // Getters
+  File? get selectedImage => _selectedImage;
+  FoodAnalysisResult? get analysisResult => _analysisResult;
   FoodItem? get analyzedFood => _analyzedFood;
-  File? get capturedImage => _capturedImage;
-  UserProfile? get userProfile => _userProfile;
+  bool get isAnalyzing => _isAnalyzing;
+  bool get isSaving => _isSaving;
+  String? get error => _error;
+  bool get hasValidAnalysis => _analysisResult?.isValid ?? false;
 
-  Future<void> loadUserProfile() async {
-    try {
-      _userProfile = await _firebaseService.getUserProfile(_firebaseService.userId);
-      notifyListeners();
-    } catch (e) {
-      _error = e.toString();
-      notifyListeners();
-    }
-  }
-
-  Future<void> takeFoodPhoto() async {
+  Future<void> pickImageFromCamera() async {
     _clearError();
-    _isLoading = true;
-    notifyListeners();
-
+    
     try {
-      final image = await _cameraService.takeFoodPhoto();
+      final image = await _cameraService.pickImageFromCamera();
       if (image != null) {
-        _capturedImage = image;
-        await _analyzeFoodImage(image);
+        _selectedImage = image;
+        notifyListeners();
+        await _analyzeImage();
       }
     } catch (e) {
-      _error = e.toString();
-    } finally {
-      _isLoading = false;
-      notifyListeners();
+      _setError('Kamera kullanılamadı: $e');
     }
   }
 
   Future<void> pickImageFromGallery() async {
     _clearError();
-    _isLoading = true;
-    notifyListeners();
-
+    
     try {
       final image = await _cameraService.pickImageFromGallery();
       if (image != null) {
-        _capturedImage = image;
-        await _analyzeFoodImage(image);
+        _selectedImage = image;
+        notifyListeners();
+        await _analyzeImage();
       }
     } catch (e) {
-      _error = e.toString();
-    } finally {
-      _isLoading = false;
-      notifyListeners();
+      _setError('Galeri kullanılamadı: $e');
     }
   }
 
-  Future<void> _analyzeFoodImage(File imageFile) async {
-    _isAnalyzing = true;
-    notifyListeners();
+  Future<void> _analyzeImage() async {
+    if (_selectedImage == null) return;
+
+    _setAnalyzing(true);
+    _clearError();
 
     try {
-      final analyzedFood = await _aiService.analyzeFoodImage(imageFile);
-      if (analyzedFood != null) {
-        _analyzedFood = analyzedFood;
-        
-        // Alerji kontrolü yap
-        if (_userProfile != null && _userProfile!.allergies.isNotEmpty) {
-          final allergenWarnings = _userProfile!.checkAllergens(analyzedFood.allergens);
-          if (allergenWarnings.isNotEmpty) {
-            _error = 'UYARI: Bu yemekte şu alerjik maddeler bulunabilir: ${allergenWarnings.join(', ')}';
-          }
-        }
+      _analysisResult = await _aiService.analyzeFoodImage(_selectedImage!);
+      
+      if (_analysisResult!.isValid) {
+        await _createFoodItem();
       } else {
-        _error = 'Yemek analiz edilemedi. Lütfen tekrar deneyin veya daha net bir fotoğraf çekin.';
-      }
-    } catch (e) {
-      _error = e.toString();
-      _analyzedFood = null;
-      _capturedImage = null;
-    } finally {
-      _isAnalyzing = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> saveFoodItem() async {
-    if (_analyzedFood == null) return;
-
-    _isLoading = true;
-    notifyListeners();
-
-    try {
-      // Önce resmi Firebase Storage'a yükle
-      if (_capturedImage != null) {
-        final imageUrl = await _firebaseService.uploadFoodImage(
-          _capturedImage!,
-          _firebaseService.userId,
-        );
-        
-        // FoodItem'ı güncellenmiş image URL ile kaydet
-        final updatedFood = _analyzedFood!.copyWith(imageUrl: imageUrl);
-        await _firebaseService.saveFoodItem(updatedFood, _firebaseService.userId);
-        
-        _analyzedFood = updatedFood;
-      } else {
-        await _firebaseService.saveFoodItem(_analyzedFood!, _firebaseService.userId);
+        _setError('Yemek tanınamadı. Lütfen başka bir fotoğraf deneyin.');
       }
       
-      // Başarılı kayıt sonrası temizle
-      _clearAnalysis();
+      notifyListeners();
     } catch (e) {
-      _error = 'Yemek kaydedilemedi: $e';
+      _setError('Analiz sırasında hata oluştu: $e');
     } finally {
-      _isLoading = false;
+      _setAnalyzing(false);
+    }
+  }
+
+  Future<void> _createFoodItem() async {
+    final userId = _firebaseService.currentUserId;
+    if (userId == null || _analysisResult == null) return;
+
+    try {
+      // Firebase Storage'a görsel yükle
+      String? imageUrl;
+      if (_selectedImage != null) {
+        imageUrl = await _firebaseService.uploadFoodImage(_selectedImage!, userId);
+      }
+
+      // FoodItem oluştur
+      _analyzedFood = FoodItem(
+        id: '', // Firebase'den gelecek
+        name: _analysisResult!.name,
+        description: _analysisResult!.description,
+        calories: _analysisResult!.calories,
+        protein: _analysisResult!.protein,
+        carbohydrates: _analysisResult!.carbohydrates,
+        fat: _analysisResult!.fat,
+        fiber: _analysisResult!.fiber,
+        imageUrl: imageUrl,
+        userId: userId,
+        scannedAt: DateTime.now(),
+        portion: _analysisResult!.estimatedPortion,
+      );
+
+      notifyListeners();
+    } catch (e) {
+      _setError('Yemek verisi hazırlanamadı: $e');
+    }
+  }
+
+  Future<bool> saveFoodItem() async {
+    if (_analyzedFood == null) return false;
+
+    _setSaving(true);
+    _clearError();
+
+    try {
+      final foodId = await _firebaseService.saveFoodItem(_analyzedFood!);
+      _analyzedFood = _analyzedFood!.copyWith();
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _setError('Yemek kaydedilemedi: $e');
+      return false;
+    } finally {
+      _setSaving(false);
+    }
+  }
+
+  void updatePortion(double newPortion) {
+    if (_analyzedFood != null) {
+      _analyzedFood = _analyzedFood!.copyWith(portion: newPortion);
       notifyListeners();
     }
   }
 
-  void updateFoodItem(FoodItem updatedFood) {
-    _analyzedFood = updatedFood;
-    notifyListeners();
-  }
-
-  void updatePortionSize(double newSize) {
+  void updateFoodDetails({
+    String? name,
+    String? description,
+    double? calories,
+    double? protein,
+    double? carbohydrates,
+    double? fat,
+    double? fiber,
+  }) {
     if (_analyzedFood != null) {
-      final multiplier = newSize / _analyzedFood!.portionSize;
       _analyzedFood = _analyzedFood!.copyWith(
-        portionSize: newSize,
-        nutritionInfo: _analyzedFood!.nutritionInfo * multiplier,
+        name: name,
+        description: description,
+        calories: calories,
+        protein: protein,
+        carbohydrates: carbohydrates,
+        fat: fat,
+        fiber: fiber,
       );
       notifyListeners();
     }
   }
 
-  void updateFoodName(String newName) {
-    if (_analyzedFood != null) {
-      _analyzedFood = _analyzedFood!.copyWith(name: newName);
-      notifyListeners();
-    }
+  void clearData() {
+    _selectedImage = null;
+    _analysisResult = null;
+    _analyzedFood = null;
+    _clearError();
+    notifyListeners();
+  }
+
+  void _setAnalyzing(bool analyzing) {
+    _isAnalyzing = analyzing;
+    notifyListeners();
+  }
+
+  void _setSaving(bool saving) {
+    _isSaving = saving;
+    notifyListeners();
+  }
+
+  void _setError(String error) {
+    _error = error;
+    notifyListeners();
   }
 
   void _clearError() {
     _error = null;
-  }
-
-  void _clearAnalysis() {
-    _analyzedFood = null;
-    _capturedImage = null;
-    _error = null;
-  }
-
-  void clearAll() {
-    _clearAnalysis();
     notifyListeners();
   }
 
-  Future<List<String>> getSimilarFoodSuggestions() async {
-    if (_analyzedFood == null) return [];
-    
-    try {
-      return await _aiService.suggestSimilarFoods(_analyzedFood!.name);
-    } catch (e) {
-      print('Benzer yemek önerileri alınamadı: $e');
-      return [];
-    }
-  }
-
-  List<String> getAllergenWarnings() {
-    if (_userProfile == null || _analyzedFood == null) return [];
-    return _userProfile!.checkAllergens(_analyzedFood!.allergens);
-  }
-
-  bool hasAllergenWarnings() {
-    return getAllergenWarnings().isNotEmpty;
+  @override
+  void dispose() {
+    _cameraService.dispose();
+    super.dispose();
   }
 } 

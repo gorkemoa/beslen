@@ -1,57 +1,63 @@
 import 'dart:io';
+import 'package:camera/camera.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 class CameraService {
-  static final CameraService _instance = CameraService._internal();
-  factory CameraService() => _instance;
-  CameraService._internal();
-
   final ImagePicker _picker = ImagePicker();
+  List<CameraDescription>? _cameras;
+  CameraController? _controller;
 
-  Future<File?> takeFoodPhoto() async {
+  Future<void> initializeCameras() async {
     try {
-      // Kamera iznini kontrol et
-      final cameraPermission = await Permission.camera.status;
-      if (cameraPermission.isDenied) {
-        final result = await Permission.camera.request();
-        if (result.isDenied) {
-          throw 'Kamera izni gerekli';
-        }
-      }
+      _cameras = await availableCameras();
+    } catch (e) {
+      throw Exception('Kameralar başlatılamadı: $e');
+    }
+  }
 
-      final XFile? image = await _picker.pickImage(
-        source: ImageSource.camera,
-        imageQuality: 80,
-        maxWidth: 1080,
-        maxHeight: 1080,
+  Future<CameraController?> initializeCamera() async {
+    if (_cameras == null || _cameras!.isEmpty) {
+      await initializeCameras();
+    }
+
+    if (_cameras == null || _cameras!.isEmpty) {
+      throw Exception('Kullanılabilir kamera bulunamadı');
+    }
+
+    try {
+      _controller = CameraController(
+        _cameras!.first,
+        ResolutionPreset.high,
+        enableAudio: false,
       );
 
-      if (image != null) {
-        return File(image.path);
-      }
-      return null;
+      await _controller!.initialize();
+      return _controller;
     } catch (e) {
-      throw 'Fotoğraf çekilemedi: $e';
+      throw Exception('Kamera başlatılamadı: $e');
+    }
+  }
+
+  Future<File?> takePicture() async {
+    if (_controller == null || !_controller!.value.isInitialized) {
+      throw Exception('Kamera başlatılmamış');
+    }
+
+    try {
+      final image = await _controller!.takePicture();
+      return File(image.path);
+    } catch (e) {
+      throw Exception('Fotoğraf çekilemedi: $e');
     }
   }
 
   Future<File?> pickImageFromGallery() async {
     try {
-      // Galeri iznini kontrol et
-      final storagePermission = await Permission.photos.status;
-      if (storagePermission.isDenied) {
-        final result = await Permission.photos.request();
-        if (result.isDenied) {
-          throw 'Galeri izni gerekli';
-        }
-      }
-
       final XFile? image = await _picker.pickImage(
         source: ImageSource.gallery,
         imageQuality: 80,
-        maxWidth: 1080,
-        maxHeight: 1080,
+        maxWidth: 1024,
+        maxHeight: 1024,
       );
 
       if (image != null) {
@@ -59,49 +65,33 @@ class CameraService {
       }
       return null;
     } catch (e) {
-      throw 'Resim seçilemedi: $e';
+      throw Exception('Galeri fotoğrafı seçilemedi: $e');
     }
   }
 
-  Future<List<File>> pickMultipleImages() async {
+  Future<File?> pickImageFromCamera() async {
     try {
-      final storagePermission = await Permission.photos.status;
-      if (storagePermission.isDenied) {
-        final result = await Permission.photos.request();
-        if (result.isDenied) {
-          throw 'Galeri izni gerekli';
-        }
-      }
-
-      final List<XFile> images = await _picker.pickMultiImage(
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.camera,
         imageQuality: 80,
-        maxWidth: 1080,
-        maxHeight: 1080,
+        maxWidth: 1024,
+        maxHeight: 1024,
       );
 
-      return images.map((image) => File(image.path)).toList();
+      if (image != null) {
+        return File(image.path);
+      }
+      return null;
     } catch (e) {
-      throw 'Resimler seçilemedi: $e';
+      throw Exception('Kamera fotoğrafı çekilemedi: $e');
     }
   }
 
-  Future<bool> checkCameraPermission() async {
-    final status = await Permission.camera.status;
-    return status.isGranted;
+  void dispose() {
+    _controller?.dispose();
   }
 
-  Future<bool> checkGalleryPermission() async {
-    final status = await Permission.photos.status;
-    return status.isGranted;
-  }
+  bool get isInitialized => _controller?.value.isInitialized ?? false;
 
-  Future<bool> requestCameraPermission() async {
-    final result = await Permission.camera.request();
-    return result.isGranted;
-  }
-
-  Future<bool> requestGalleryPermission() async {
-    final result = await Permission.photos.request();
-    return result.isGranted;
-  }
+  CameraController? get controller => _controller;
 } 

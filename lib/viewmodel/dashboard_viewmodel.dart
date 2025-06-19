@@ -1,7 +1,6 @@
-import 'dart:async';
 import 'package:flutter/foundation.dart';
-import '../models/food_item.dart';
 import '../models/user_profile.dart';
+import '../models/food_item.dart';
 import '../models/daily_summary.dart';
 import '../service/firebase_service.dart';
 import '../service/gemini_ai_service.dart';
@@ -10,197 +9,152 @@ class DashboardViewModel extends ChangeNotifier {
   final FirebaseService _firebaseService = FirebaseService();
   final GeminiAIService _aiService = GeminiAIService();
 
-  bool _isLoading = false;
-  String? _error;
   UserProfile? _userProfile;
   List<FoodItem> _todaysFoods = [];
+  List<String> _dailyRecommendations = [];
   DailySummary? _todaySummary;
+  bool _isLoading = false;
+  String? _error;
 
-  // Stream subscriptions for cleanup
-  StreamSubscription<UserProfile?>? _userProfileSubscription;
-  StreamSubscription<List<FoodItem>>? _foodItemsSubscription;
-
-  bool get isLoading => _isLoading;
-  String? get error => _error;
+  // Getters
   UserProfile? get userProfile => _userProfile;
   List<FoodItem> get todaysFoods => _todaysFoods;
+  List<String> get dailyRecommendations => _dailyRecommendations;
   DailySummary? get todaySummary => _todaySummary;
+  bool get isLoading => _isLoading;
+  String? get error => _error;
 
-  double get totalCalories => _todaysFoods.fold(
-    0.0, 
-    (sum, food) => sum + food.nutritionInfo.calories
-  );
+  // Günlük istatistikler
+  double get todayCalories => _todaysFoods.fold(0.0, (sum, food) => sum + food.totalCalories);
+  double get todayProtein => _todaysFoods.fold(0.0, (sum, food) => sum + food.totalProtein);
+  double get todayCarbs => _todaysFoods.fold(0.0, (sum, food) => sum + food.totalCarbohydrates);
+  double get todayFat => _todaysFoods.fold(0.0, (sum, food) => sum + food.totalFat);
 
-  double get totalProtein => _todaysFoods.fold(
-    0.0, 
-    (sum, food) => sum + food.nutritionInfo.protein
-  );
+  double get calorieProgress {
+    if (_userProfile == null) return 0.0;
+    final target = _userProfile!.dailyCalorieNeeds;
+    return target > 0 ? (todayCalories / target) * 100 : 0.0;
+  }
 
-  double get totalCarbs => _todaysFoods.fold(
-    0.0, 
-    (sum, food) => sum + food.nutritionInfo.carbohydrates
-  );
-
-  double get totalFat => _todaysFoods.fold(
-    0.0, 
-    (sum, food) => sum + food.nutritionInfo.fat
-  );
-
-  double get calorieGoal => _userProfile?.dailyCalorieGoal ?? 2000.0;
-  double get remainingCalories => calorieGoal - totalCalories;
-  double get calorieProgress => (totalCalories / calorieGoal).clamp(0.0, 1.0);
+  String get calorieProgressText {
+    if (_userProfile == null) return '0 / 0 kalori';
+    return '${todayCalories.toInt()} / ${_userProfile!.dailyCalorieNeeds.toInt()} kalori';
+  }
 
   Future<void> initialize() async {
-    _isLoading = true;
-    notifyListeners();
+    await loadUserData();
+  }
+
+  Future<void> loadUserData() async {
+    _setLoading(true);
+    _clearError();
 
     try {
-      await loadUserProfile();
-      await loadTodaysFoods();
-      _setupFoodItemsStream(); // Real-time updates için stream kurulumu
-      await generateDailySummary();
+      final userId = _firebaseService.currentUserId;
+      if (userId == null) {
+        throw Exception('Kullanıcı oturumu bulunamadı');
+      }
+
+      // Kullanıcı profilini yükle
+      await _loadUserProfile(userId);
+      
+      // Bugünün yemeklerini yükle
+      await _loadTodaysFoods(userId);
+      
+      // Günlük önerileri yükle
+      await _loadDailyRecommendations();
+
     } catch (e) {
-      _error = e.toString();
+      _setError('Veriler yüklenemedi: $e');
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      _setLoading(false);
     }
   }
 
-  void _setupUserProfileStream() {
-    _userProfileSubscription?.cancel();
-    _userProfileSubscription = _firebaseService.getUserProfileStream(_firebaseService.userId).listen(
-      (profile) {
-        _userProfile = profile;
-        notifyListeners();
-      },
-      onError: (error) {
-        _error = 'Profil yüklenemedi: $error';
-        notifyListeners();
-      },
-    );
-  }
-
-  Future<void> loadUserProfile() async {
+  Future<void> _loadUserProfile(String userId) async {
     try {
-      _userProfile = await _firebaseService.getUserProfile(_firebaseService.userId);
-      _setupUserProfileStream(); // Real-time updates için stream kurulumu
+      _userProfile = await _firebaseService.getUserProfile(userId);
       notifyListeners();
     } catch (e) {
-      _error = 'Profil yüklenemedi: $e';
-      notifyListeners();
+      debugPrint('Profil yüklenirken hata: $e');
     }
   }
 
-  void _setupFoodItemsStream() {
-    _foodItemsSubscription?.cancel();
-    _foodItemsSubscription = _firebaseService.getTodaysFoodItemsStream(_firebaseService.userId).listen(
-      (foods) {
-        _todaysFoods = foods;
-        generateDailySummary();
-      },
-      onError: (error) {
-        _error = 'Günlük yemekler yüklenemedi: $error';
-        notifyListeners();
-      },
-    );
-  }
-
-  Future<void> loadTodaysFoods() async {
+  Future<void> _loadTodaysFoods(String userId) async {
     try {
-      _todaysFoods = await _firebaseService.getTodaysFoodItems(_firebaseService.userId);
+      _todaysFoods = await _firebaseService.getTodaysFoods(userId);
+      
+      // Günlük özeti oluştur
+      _createTodaySummary(userId);
+      
       notifyListeners();
     } catch (e) {
-      _error = 'Günlük yemekler yüklenemedi: $e';
-      notifyListeners();
+      debugPrint('Bugünün yemekleri yüklenirken hata: $e');
     }
   }
 
-  Future<void> generateDailySummary() async {
-    if (_userProfile == null) return;
-
-    final totalNutrition = _calculateTotalNutrition();
+  void _createTodaySummary(String userId) {
+    final today = DateTime.now();
+    final dateStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
     
     _todaySummary = DailySummary(
-      id: DateTime.now().toIso8601String().split('T')[0],
-      userId: _firebaseService.userId,
-      date: DateTime.now(),
-      consumedFoods: _todaysFoods,
-      totalNutrition: totalNutrition,
-      calorieGoal: _userProfile!.dailyCalorieGoal,
+      id: '${userId}_$dateStr',
+      userId: userId,
+      date: today,
+      foods: _todaysFoods,
+      targetCalories: _userProfile?.dailyCalorieNeeds,
     );
-
-    try {
-      await _firebaseService.saveDailySummary(_todaySummary!);
-    } catch (e) {
-      print('Günlük özet kaydedilemedi: $e');
-    }
-    
-    notifyListeners();
   }
 
-  NutritionInfo _calculateTotalNutrition() {
-    return _todaysFoods.fold(
-      NutritionInfo(calories: 0, protein: 0, carbohydrates: 0, fat: 0),
-      (total, food) => NutritionInfo(
-        calories: total.calories + food.nutritionInfo.calories,
-        protein: total.protein + food.nutritionInfo.protein,
-        carbohydrates: total.carbohydrates + food.nutritionInfo.carbohydrates,
-        fat: total.fat + food.nutritionInfo.fat,
-        fiber: total.fiber + food.nutritionInfo.fiber,
-        sugar: total.sugar + food.nutritionInfo.sugar,
-        sodium: total.sodium + food.nutritionInfo.sodium,
-        calcium: total.calcium + food.nutritionInfo.calcium,
-        iron: total.iron + food.nutritionInfo.iron,
-        vitaminC: total.vitaminC + food.nutritionInfo.vitaminC,
-        vitaminA: total.vitaminA + food.nutritionInfo.vitaminA,
-      ),
-    );
+  Future<void> _loadDailyRecommendations() async {
+    try {
+      final targetCalories = _userProfile?.dailyCalorieNeeds ?? 2000;
+      _dailyRecommendations = await _aiService.getDailyRecommendations(_todaysFoods, targetCalories);
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Günlük öneriler yüklenirken hata: $e');
+      // Varsayılan öneriler
+      _dailyRecommendations = [
+        'Günde en az 5 porsiyon sebze ve meyve tüketin',
+        'Bol su için, günde en az 8 bardak su içmeye çalışın',
+        'Öğün aralarında sağlıklı atıştırmalıklar tercih edin',
+        'Porsiyon miktarlarınıza dikkat edin',
+        'Düzenli öğün saatlerine uyun'
+      ];
+      notifyListeners();
+    }
+  }
+
+  Future<void> refreshData() async {
+    await loadUserData();
   }
 
   Future<void> deleteFoodItem(String foodId) async {
+    _setLoading(true);
+    _clearError();
+
     try {
-      await _firebaseService.deleteFoodItem(foodId, _firebaseService.userId);
-      await loadTodaysFoods();
-      await generateDailySummary();
+      await _firebaseService.deleteFoodItem(foodId);
+      await refreshData();
     } catch (e) {
-      _error = 'Yemek silinemedi: $e';
-      notifyListeners();
+      _setError('Yemek silinemedi: $e');
+    } finally {
+      _setLoading(false);
     }
   }
 
-  Future<String> getMealRecommendation() async {
-    if (_userProfile == null) return 'Öneri üretilemedi';
-    
-    try {
-      return await _aiService.generateMealRecommendation(
-        remainingCalories,
-        _userProfile!.allergies,
-        _userProfile!.dietaryRestrictions,
-      );
-    } catch (e) {
-      return 'Öneri üretilemedi: $e';
-    }
-  }
-
-  List<String> getAllergenWarnings(FoodItem food) {
-    if (_userProfile == null) return [];
-    return _userProfile!.checkAllergens(food.allergens);
-  }
-
-  void clearError() {
-    _error = null;
+  void _setLoading(bool loading) {
+    _isLoading = loading;
     notifyListeners();
   }
 
-  void refreshData() {
-    initialize();
+  void _setError(String error) {
+    _error = error;
+    notifyListeners();
   }
 
-  @override
-  void dispose() {
-    _userProfileSubscription?.cancel();
-    _foodItemsSubscription?.cancel();
-    super.dispose();
+  void _clearError() {
+    _error = null;
+    notifyListeners();
   }
 } 
