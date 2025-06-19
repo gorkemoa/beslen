@@ -215,7 +215,7 @@ class _HistoryTabState extends State<HistoryTab> with TickerProviderStateMixin {
           onRefresh: () async {
             await appViewModel.loadFoodHistory();
           },
-          child: _buildFoodList(context, appViewModel.foodHistory),
+          child: _buildFilteredFoodList(context, appViewModel.foodHistory),
         );
       },
     );
@@ -234,7 +234,7 @@ class _HistoryTabState extends State<HistoryTab> with TickerProviderStateMixin {
             await appViewModel.loadMealStatistics();
             await appViewModel.loadUserProfile();
           },
-          child: _buildMealStatsList(context, appViewModel),
+          child: _buildFilteredMealStatsList(context, appViewModel),
         );
       },
     );
@@ -255,7 +255,7 @@ class _HistoryTabState extends State<HistoryTab> with TickerProviderStateMixin {
              await appViewModel.loadSleepHistory();
              await appViewModel.loadSleepStatistics();
            },
-           child: _buildSleepHistoryList(context, appViewModel),
+           child: _buildFilteredSleepHistoryList(context, appViewModel),
          );
       },
     );
@@ -374,6 +374,44 @@ class _HistoryTabState extends State<HistoryTab> with TickerProviderStateMixin {
         ),
       ),
     );
+  }
+
+  Widget _buildFilteredFoodList(BuildContext context, List<FoodItem> foodHistory) {
+    final filteredHistory = _filterFoodByPeriod(foodHistory);
+    return _buildFoodList(context, filteredHistory);
+  }
+
+  List<FoodItem> _filterFoodByPeriod(List<FoodItem> foodHistory) {
+    final now = DateTime.now();
+    
+    switch (_selectedPeriod) {
+      case 'Günlük':
+        return foodHistory.where((food) {
+          final foodDate = food.scannedAt;
+          return foodDate.year == now.year &&
+                 foodDate.month == now.month &&
+                 foodDate.day == now.day;
+        }).toList();
+        
+      case 'Haftalık':
+        final weekStart = now.subtract(Duration(days: now.weekday - 1));
+        final weekEnd = weekStart.add(const Duration(days: 6));
+        return foodHistory.where((food) {
+          final foodDate = food.scannedAt;
+          return foodDate.isAfter(weekStart.subtract(const Duration(days: 1))) &&
+                 foodDate.isBefore(weekEnd.add(const Duration(days: 1)));
+        }).toList();
+        
+      case 'Aylık':
+        return foodHistory.where((food) {
+          final foodDate = food.scannedAt;
+          return foodDate.year == now.year &&
+                 foodDate.month == now.month;
+        }).toList();
+        
+      default:
+        return foodHistory;
+    }
   }
 
   Widget _buildFoodList(BuildContext context, List<FoodItem> foodHistory) {
@@ -601,7 +639,49 @@ class _HistoryTabState extends State<HistoryTab> with TickerProviderStateMixin {
     );
   }
 
+  Widget _buildFilteredSleepHistoryList(BuildContext context, AppViewModel appViewModel) {
+    final filteredSleepHistory = _filterSleepByPeriod(appViewModel.sleepHistory);
+    return _buildSleepHistoryListWithData(context, appViewModel, filteredSleepHistory);
+  }
+
+  List<SleepRecord> _filterSleepByPeriod(List<SleepRecord> sleepHistory) {
+    final now = DateTime.now();
+    
+    switch (_selectedPeriod) {
+      case 'Günlük':
+        return sleepHistory.where((sleep) {
+          final sleepDate = sleep.sleepTime;
+          return sleepDate.year == now.year &&
+                 sleepDate.month == now.month &&
+                 sleepDate.day == now.day;
+        }).toList();
+        
+      case 'Haftalık':
+        final weekStart = now.subtract(Duration(days: now.weekday - 1));
+        final weekEnd = weekStart.add(const Duration(days: 6));
+        return sleepHistory.where((sleep) {
+          final sleepDate = sleep.sleepTime;
+          return sleepDate.isAfter(weekStart.subtract(const Duration(days: 1))) &&
+                 sleepDate.isBefore(weekEnd.add(const Duration(days: 1)));
+        }).toList();
+        
+      case 'Aylık':
+        return sleepHistory.where((sleep) {
+          final sleepDate = sleep.sleepTime;
+          return sleepDate.year == now.year &&
+                 sleepDate.month == now.month;
+        }).toList();
+        
+      default:
+        return sleepHistory;
+    }
+  }
+
   Widget _buildSleepHistoryList(BuildContext context, AppViewModel appViewModel) {
+    return _buildSleepHistoryListWithData(context, appViewModel, appViewModel.sleepHistory);
+  }
+
+  Widget _buildSleepHistoryListWithData(BuildContext context, AppViewModel appViewModel, List<SleepRecord> sleepHistory) {
     final profile = appViewModel.userProfile!;
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     
@@ -618,8 +698,8 @@ class _HistoryTabState extends State<HistoryTab> with TickerProviderStateMixin {
            _buildSleepStats(context, appViewModel),
           const SizedBox(height: 16),
           
-                   // Uyku geçmişi
-           _buildSleepHistoryCard(context, appViewModel.sleepHistory),
+                             // Uyku geçmişi
+          _buildSleepHistoryCard(context, sleepHistory),
         ],
       ),
     );
@@ -1280,6 +1360,515 @@ class _HistoryTabState extends State<HistoryTab> with TickerProviderStateMixin {
     return date.year == now.year &&
            date.month == now.month &&
            date.day == now.day;
+  }
+
+  Widget _buildFilteredMealStatsList(BuildContext context, AppViewModel appViewModel) {
+    return _buildMealStatsListWithPeriod(context, appViewModel, _selectedPeriod);
+  }
+
+  Widget _buildMealStatsListWithPeriod(BuildContext context, AppViewModel appViewModel, String period) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
+    return Container(
+      color: isDarkMode ? Colors.black : Colors.grey.shade50,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          // Periode özel header
+          _buildPeriodHeader(context, period),
+          const SizedBox(height: 16),
+          
+          // Bugünün öğün durumu (sadece günlük için)
+          if (period == 'Günlük') ...[
+            _buildTodaysMealStatus(context, appViewModel),
+            const SizedBox(height: 16),
+          ],
+          
+          // Öğün istatistikleri (periode göre)
+          _buildPeriodMealStatsCard(context, appViewModel, period),
+          const SizedBox(height: 16),
+          
+          // Öğün takibi (periode göre)
+          _buildPeriodMealTracking(context, appViewModel, period),
+          const SizedBox(height: 16),
+          
+          // Öğün önerileri (sadece günlük için)
+          if (period == 'Günlük')
+            _buildMealSuggestions(context, appViewModel),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPeriodHeader(BuildContext context, String period) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    IconData icon;
+    String subtitle;
+    
+    switch (period) {
+      case 'Günlük':
+        icon = Icons.today;
+        subtitle = DateFormat('d MMMM yyyy', 'tr_TR').format(DateTime.now());
+        break;
+      case 'Haftalık':
+        icon = Icons.calendar_view_week;
+        final now = DateTime.now();
+        final weekStart = now.subtract(Duration(days: now.weekday - 1));
+        final weekEnd = weekStart.add(const Duration(days: 6));
+        subtitle = '${DateFormat('d MMM', 'tr_TR').format(weekStart)} - ${DateFormat('d MMM', 'tr_TR').format(weekEnd)}';
+        break;
+      case 'Aylık':
+        icon = Icons.calendar_view_month;
+        subtitle = DateFormat('MMMM yyyy', 'tr_TR').format(DateTime.now());
+        break;
+      default:
+        icon = Icons.analytics;
+        subtitle = 'Genel İstatistikler';
+    }
+    
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Theme.of(context).colorScheme.primary,
+            Theme.of(context).colorScheme.primary.withOpacity(0.8),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            color: Colors.white,
+            size: 28,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$period Öğün Takibi',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPeriodMealStatsCard(BuildContext context, AppViewModel appViewModel, String period) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
+    // Mock data for different periods - gerçek implementasyonda Firebase'den gelecek
+    Map<String, dynamic> periodStats = _getPeriodMealStats(period);
+    
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDarkMode ? Colors.grey[850] : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.analytics,
+                color: Theme.of(context).colorScheme.primary,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '$period İstatistikleri',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatCard(
+                  'Toplam Öğün',
+                  '${periodStats['totalMeals']} öğün',
+                  Colors.blue.shade400,
+                  Icons.restaurant,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildStatCard(
+                  'Tamamlanan',
+                  '${periodStats['completedMeals']} öğün',
+                  Colors.green.shade400,
+                  Icons.check_circle,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildStatCard(
+                  'Tamamlanma',
+                  '${periodStats['completionRate']}%',
+                  Colors.orange.shade400,
+                  Icons.pie_chart,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildStatCard(
+                  'En Popüler',
+                  _getMealDisplayName(periodStats['mostPopular']),
+                  Colors.purple.shade400,
+                  Icons.star,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPeriodMealTracking(BuildContext context, AppViewModel appViewModel, String period) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isDarkMode ? Colors.grey[850] : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.timeline,
+                color: Theme.of(context).colorScheme.primary,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '$period Takip',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          
+          // Période göre farklı görselleştirme
+          if (period == 'Günlük')
+            _buildDailyMealTracker(context, appViewModel)
+          else if (period == 'Haftalık')
+            _buildWeeklyMealTracker(context, appViewModel)
+          else
+            _buildMonthlyMealTracker(context, appViewModel),
+        ],
+      ),
+    );
+  }
+
+  Map<String, dynamic> _getPeriodMealStats(String period) {
+    // Mock data - gerçek implementasyonda Firebase'den gelecek
+    switch (period) {
+      case 'Günlük':
+        return {
+          'totalMeals': 4,
+          'completedMeals': 2,
+          'completionRate': 50,
+          'mostPopular': 'breakfast',
+        };
+      case 'Haftalık':
+        return {
+          'totalMeals': 28,
+          'completedMeals': 18,
+          'completionRate': 64,
+          'mostPopular': 'lunch',
+        };
+      case 'Aylık':
+        return {
+          'totalMeals': 120,
+          'completedMeals': 85,
+          'completionRate': 71,
+          'mostPopular': 'dinner',
+        };
+      default:
+        return {
+          'totalMeals': 0,
+          'completedMeals': 0,
+          'completionRate': 0,
+          'mostPopular': 'breakfast',
+        };
+    }
+  }
+
+  Widget _buildDailyMealTracker(BuildContext context, AppViewModel appViewModel) {
+    final todaysMeals = appViewModel.userProfile?.todaysMeals ?? {};
+    final mealTypes = ['breakfast', 'lunch', 'dinner', 'snack'];
+    
+    return Column(
+      children: mealTypes.map((mealType) {
+        final isCompleted = todaysMeals.containsKey(mealType);
+        final time = todaysMeals[mealType];
+        
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isCompleted 
+              ? Colors.green.withOpacity(0.1) 
+              : Colors.grey.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isCompleted 
+                ? Colors.green.withOpacity(0.3) 
+                : Colors.grey.withOpacity(0.3),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                _getMealIcon(mealType),
+                color: isCompleted ? Colors.green : Colors.grey,
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  _getMealDisplayName(mealType),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: isCompleted ? Colors.green : Colors.grey,
+                  ),
+                ),
+              ),
+              if (isCompleted && time != null)
+                Text(
+                  DateFormat('HH:mm').format(time),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.green.shade600,
+                  ),
+                ),
+              Icon(
+                isCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
+                color: isCompleted ? Colors.green : Colors.grey,
+                size: 20,
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildWeeklyMealTracker(BuildContext context, AppViewModel appViewModel) {
+    final now = DateTime.now();
+    final weekDays = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+    
+    return Column(
+      children: [
+        Text(
+          'Bu Hafta Öğün Tamamlama',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: List.generate(7, (index) {
+            final date = now.subtract(Duration(days: 6 - index));
+            final isToday = _isToday(date);
+            final completionRate = isToday ? appViewModel.todaysMealCompletionRate : (index % 3 == 0 ? 0.75 : 0.5); // Mock data
+            
+            return Column(
+              children: [
+                Text(
+                  weekDays[date.weekday - 1],
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isToday ? Theme.of(context).colorScheme.primary : Colors.grey,
+                    fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  date.day.toString(),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: isToday ? Theme.of(context).colorScheme.primary : Colors.grey,
+                    fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  width: 35,
+                  height: 35,
+                  decoration: BoxDecoration(
+                    color: _getCompletionColor(completionRate).withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: _getCompletionColor(completionRate),
+                      width: 2,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '${(completionRate * 4).toInt()}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: _getCompletionColor(completionRate),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          }),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMonthlyMealTracker(BuildContext context, AppViewModel appViewModel) {
+    final now = DateTime.now();
+    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
+    
+    return Column(
+      children: [
+        Text(
+          'Bu Ay Öğün Performansı',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.blue.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Toplam Günler',
+                    style: TextStyle(
+                      color: Colors.blue.shade600,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Text(
+                    '$daysInMonth gün',
+                    style: TextStyle(
+                      color: Colors.blue.shade800,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Aktif Günler',
+                    style: TextStyle(
+                      color: Colors.green.shade600,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Text(
+                    '${(daysInMonth * 0.7).toInt()} gün', // Mock data
+                    style: TextStyle(
+                      color: Colors.green.shade800,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Ortalama Tamamlanma',
+                    style: TextStyle(
+                      color: Colors.orange.shade600,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Text(
+                    '%71', // Mock data
+                    style: TextStyle(
+                      color: Colors.orange.shade800,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildMealStatsList(BuildContext context, AppViewModel appViewModel) {
